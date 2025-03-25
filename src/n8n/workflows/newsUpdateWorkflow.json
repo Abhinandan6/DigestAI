@@ -1,0 +1,27 @@
+{
+  "name": "News Aggregator Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -20,
+        -320
+      ],
+      "id": "4f31b79e-6145-40bb-8ad4-1eb93439b420",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "connections": {
+  }
+}
