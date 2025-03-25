@@ -1,4 +1,4 @@
-import React from 'react';
+// Remove the React import since it's not being used directly
 import nhost from '../utils/nhost';
 
 const Debug = () => {
