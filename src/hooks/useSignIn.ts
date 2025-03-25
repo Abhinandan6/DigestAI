@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import nhost from '../utils/nhost';
-import { SignInParams } from '@nhost/nhost-js';
 
-export function useSignInEmailPassword() {
+export const useSignInEmailPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
 
   const signInEmailPassword = async (email: string, password: string) => {
     setIsLoading(true);
@@ -16,17 +15,17 @@ export function useSignInEmailPassword() {
     setNeedsEmailVerification(false);
 
     try {
-      const signInParams: SignInParams = {
+      const { session, error } = await nhost.auth.signIn({
         email,
         password
-      };
-      
-      const { session, error } = await nhost.auth.signIn(signInParams);
+      });
 
       if (error) {
         setIsError(true);
-        setError(new Error(error.message || 'Authentication failed'));        
-        if (error.message?.includes('email verification')) {
+        // Fix: Convert AuthErrorPayload to Error object with required 'name' property
+        setError(new Error(error.message));
+        
+        if (error.message.includes('email verification')) {
           setNeedsEmailVerification(true);
         }
       } else if (session) {
@@ -34,7 +33,7 @@ export function useSignInEmailPassword() {
       }
     } catch (err) {
       setIsError(true);
-      setError(err instanceof Error ? err : new Error(String(err)));
+      setError(err instanceof Error ? err : new Error('An unknown error occurred'));
     } finally {
       setIsLoading(false);
     }
@@ -44,8 +43,8 @@ export function useSignInEmailPassword() {
     signInEmailPassword,
     isLoading,
     isSuccess,
+    needsEmailVerification,
     isError,
-    error,
-    needsEmailVerification
+    error
   };
-}
+};

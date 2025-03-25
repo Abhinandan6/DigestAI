@@ -1,9 +1,9 @@
 import React from 'react';
 import { ExternalLink, Calendar } from 'lucide-react';
-import type { SimpleNewsItem } from '../types';
+import type { NewsItem } from '../types';
 
-// Changed from NewsItem to SimpleNewsItem which has the properties we need
-export const NewsCard: React.FC<SimpleNewsItem> = ({
+// Updated to use NewsItem interface
+export const NewsCard: React.FC<NewsItem> = ({
   title,
   description,
   url,

@@ -3,8 +3,8 @@ import { useUserData } from '@nhost/react';
 import { useMutation, useQuery, gql } from '@apollo/client';
 import { Link } from 'react-router-dom';
 import { Newspaper, ArrowLeft } from 'lucide-react';
-// Add the import at the top of the file
 import { triggerNewsUpdate } from '../utils/n8nService';
+import type { NewsCategory } from '../types';
 
 // GraphQL query to get user preferences
 const GET_USER_PREFERENCES = gql`
@@ -39,9 +39,10 @@ const UPDATE_USER_PREFERENCES = gql`
   }
 `;
 
-const TOPIC_OPTIONS = [
-  'Business', 'Technology', 'Entertainment', 'Sports', 
-  'Science', 'Health', 'Politics', 'World', 'General'
+// Update TOPIC_OPTIONS to use NewsCategory type
+const TOPIC_OPTIONS: NewsCategory[] = [
+  'general', 'business', 'technology', 'entertainment', 'sports', 
+  'science', 'health', 'politics', 'world'
 ];
 
 const SOURCE_OPTIONS = [
@@ -49,17 +50,12 @@ const SOURCE_OPTIONS = [
   'Associated Press', 'The Guardian', 'The Washington Post'
 ];
 
-// In the UserPreferences component, add the missing state and handler
 const UserPreferences = () => {
   const user = useUserData();
-  const [selectedTopic, setSelectedTopic] = useState('General');
+  const [selectedCategories, setSelectedCategories] = useState<NewsCategory[]>([]);
   const [selectedSources, setSelectedSources] = useState<string[]>([]);
   const [keywords, setKeywords] = useState('');
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [preferenceId, setPreferenceId] = useState<string | null>(null);
-
-  // Add this line to track selected categories
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   // Query to get existing preferences
   const { loading, error, data } = useQuery(GET_USER_PREFERENCES, {
@@ -68,21 +64,21 @@ const UserPreferences = () => {
   });
 
   // Mutation to update preferences
+  // Add loading state for mutation
   const [updatePreferences, { loading: updating }] = useMutation(UPDATE_USER_PREFERENCES);
 
   // Set initial values from database
   useEffect(() => {
     if (data?.user_preferences?.length > 0) {
       const prefs = data.user_preferences[0];
-      setPreferenceId(prefs.id);
-      setSelectedTopic(prefs.topic || 'General');
+      setSelectedCategories([prefs.topic || 'general'] as NewsCategory[]);
       setSelectedSources(prefs.preferred_sources || []);
       setKeywords(prefs.keywords?.join(', ') || '');
     }
   }, [data]);
 
-  // Add this handler for category toggling
-  const handleCategoryToggle = (category: string) => {
+  // Update the category toggle handler
+  const handleCategoryToggle = (category: NewsCategory) => {
     setSelectedCategories(prev => 
       prev.includes(category)
         ? prev.filter(c => c !== category)
@@ -98,43 +94,30 @@ const UserPreferences = () => {
     );
   };
 
-  // Then update the handleSubmit function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!preferenceId) {
-      console.error("No preference ID found");
-      return;
-    }
-    
     try {
-      const keywordsArray = keywords
-        .split(',')
-        .map(k => k.trim())
-        .filter(k => k !== '');
-      
-      const updatedPreferences = {
-        topic: selectedTopic,
-        keywords: keywordsArray,
-        preferred_sources: selectedSources
-      };
+      const keywordArray = keywords.split(',').map(k => k.trim()).filter(Boolean);
       
       await updatePreferences({
         variables: {
-          id: preferenceId,
-          ...updatedPreferences
+          id: data?.user_preferences[0]?.id,
+          topic: selectedCategories[0] || 'general',
+          keywords: keywordArray,
+          preferred_sources: selectedSources
         }
       });
-      
-      // Trigger n8n workflow to fetch new articles based on updated preferences
-      if (user) {
-        await triggerNewsUpdate(user.id, updatedPreferences);
-      }
-      
+
+      await triggerNewsUpdate(user?.id || '', {
+        topic: selectedCategories[0] as NewsCategory,
+        keywords: keywordArray,
+        preferred_sources: selectedSources
+      });
+
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) {
-      console.error('Error saving preferences:', err);
+    } catch (error) {
+      console.error('Error saving preferences:', error);
     }
   };
 
@@ -184,7 +167,7 @@ const UserPreferences = () => {
                 <label 
                   key={category} 
                   className={`flex items-center p-3 border rounded cursor-pointer ${
-                    selectedCategories.includes(category) 
+                    selectedCategories.includes(category as NewsCategory) 
                       ? 'bg-blue-900/50 border-blue-500' 
                       : 'bg-navy-800 border-navy-700'
                   }`}
@@ -192,10 +175,10 @@ const UserPreferences = () => {
                   <input
                     type="checkbox"
                     className="mr-2"
-                    checked={selectedCategories.includes(category)}
-                    onChange={() => handleCategoryToggle(category)}
+                    checked={selectedCategories.includes(category as NewsCategory)}
+                    onChange={() => handleCategoryToggle(category as NewsCategory)}
                   />
-                  {category}
+                  {category.charAt(0).toUpperCase() + category.slice(1)}
                 </label>
               ))}
             </div>

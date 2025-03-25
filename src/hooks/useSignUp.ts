@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import nhost from '../utils/nhost';
+import { SignUpParams } from '@nhost/nhost-js';
 
 export function useSignUpEmailPassword() {
   const [isLoading, setIsLoading] = useState(false);
@@ -9,39 +10,36 @@ export function useSignUpEmailPassword() {
   const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
   const [user, setUser] = useState<any>(null);
 
-  const signUpEmailPassword = async (
-    email: string, 
-    password: string, 
-    options?: { displayName?: string; metadata?: Record<string, any> }
-  ) => {
+  const signUpEmailPassword = async (email: string, password: string, options?: any) => {
     setIsLoading(true);
     setIsError(false);
     setError(null);
+    setNeedsEmailVerification(false);
+    setUser(null);
 
     try {
-      // The signUp response doesn't directly include a user property
-      const { session, error } = await nhost.auth.signUp({
+      const signUpParams: SignUpParams = {
         email,
         password,
-        options: {
-          displayName: options?.displayName,
-          metadata: options?.metadata
-        }
-      });
-
-      if (error) {
+        options
+      };
+      
+      const response = await nhost.auth.signUp(signUpParams);
+      
+      // Check for error first
+      if ('error' in response && response.error) {
         setIsError(true);
-        setError(new Error(error.message || 'Registration failed'));
-      } else {
+        setError(new Error(response.error.message || 'Registration failed'));
+      } 
+      // Then check for session
+      else if ('session' in response && response.session) {
         setIsSuccess(true);
-        // Get user from session if available
-        if (session) {
-          setUser(session.user);
+        if (response.session?.user) {
+          setUser(response.session.user);
         }
-        
-        if (!session) {
-          setNeedsEmailVerification(true);
-        }
+      } else {
+        // If no error and no session, it likely means email verification is required
+        setNeedsEmailVerification(true);
       }
     } catch (err) {
       setIsError(true);

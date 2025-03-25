@@ -1,15 +1,13 @@
-import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
+import { ApolloClient, InMemoryCache, createHttpLink, from } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
+import { onError } from '@apollo/client/link/error';
 import nhost from './nhost';
 
-// Create the HTTP link to your Hasura GraphQL endpoint
 const httpLink = createHttpLink({
   uri: 'https://pmdddjhfyuqnpddamxhh.hasura.ap-south-1.nhost.run/v1/graphql',
 });
 
-// Add authentication headers to each request
 const authLink = setContext(async (_, { headers }) => {
-  // Get the authentication token from the Nhost client
   const token = nhost.auth.getSession()?.accessToken || '';
   
   return {
@@ -20,10 +18,38 @@ const authLink = setContext(async (_, { headers }) => {
   };
 });
 
-// Create the Apollo Client with the configured links
+// Add error handling
+const errorLink = onError(({ graphQLErrors, networkError }) => {
+  if (graphQLErrors)
+    graphQLErrors.forEach(({ message, locations, path }) =>
+      console.error(
+        `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
+      )
+    );
+  if (networkError) console.error(`[Network error]: ${networkError}`);
+});
+
 const apolloClient = new ApolloClient({
-  link: authLink.concat(httpLink),
-  cache: new InMemoryCache(),
+  link: from([errorLink, authLink, httpLink]),
+  cache: new InMemoryCache({
+    typePolicies: {
+      Query: {
+        fields: {
+          articles: {
+            // Merge function for pagination
+            merge(existing = [], incoming) {
+              return [...existing, ...incoming];
+            }
+          }
+        }
+      }
+    }
+  }),
+  defaultOptions: {
+    watchQuery: {
+      fetchPolicy: 'cache-and-network',
+    },
+  },
 });
 
 export default apolloClient;

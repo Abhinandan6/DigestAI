@@ -2,9 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/newspaper-icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React + TS</title>
+    <title>NewsFlow - Personalized News Aggregator</title>
+    <!-- These polyfills are needed for certain libraries to work in the browser -->
+    <script>
+      window.global = window;
+      window.process = { env: {} };
+    </script>
   </head>
   <body>
     <div id="root"></div>

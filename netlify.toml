@@ -7,7 +7,12 @@
   to = "/index.html"
   status = 200
 
-[build.environment]
+[context.production.environment]
   VITE_NHOST_SUBDOMAIN = "pmdddjhfyuqnpddamxhh"
   VITE_NHOST_REGION = "ap-south-1"
-  # Add your n8n webhook URLs here when ready
+  # n8n integration environment variables
+  VITE_N8N_API_URL = "https://n8n-dev.subspace.money"
+  VITE_N8N_WEBHOOK_URL = "https://n8n-dev.subspace.money/webhook/news-flow"
+  VITE_N8N_REFRESH_WEBHOOK_URL = "https://n8n-dev.subspace.money/webhook/refresh-news"
+  # Note: API keys should be set as build environment variables in Netlify dashboard
+  # for security reasons, not in this file

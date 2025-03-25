@@ -1,20 +1,31 @@
-// First NewsItem interface should be renamed to avoid duplication
-export interface SimpleNewsItem {
+// Base news interface for common properties
+export interface BaseNewsItem {
   title: string;
-  description: string;
+  content: string;
   url: string;
+  source: string;
+  published_at?: string;
+  topics: string[];
+  processed_articles?: {
+    summary: string;
+    sentiment: 'positive' | 'neutral' | 'negative';
+    explanation?: string;
+  };
+}
+
+// Frontend display properties
+export interface NewsItem extends BaseNewsItem {
+  id: string;
+  description: string;
   image?: string;
   category?: string;
-  published_at?: string;
 }
 
 export interface SearchProps {
   onSearch: (query: string) => void;
   onCategoryChange: (category: string) => void;
-  selectedCategory: string;
+  selectedCategory: NewsCategory;
 }
-
-// Define types for the news application
 
 export type NewsCategory = 
   | 'general' 
@@ -27,44 +38,10 @@ export type NewsCategory =
   | 'politics' 
   | 'world';
 
-// Update the NewsItem interface to include all properties needed by NewsCard
-export interface NewsItem {
-  id: string;
-  title: string;
-  description: string; // Add this property
-  content: string;
-  source: string;
-  published_at?: string;
-  url: string;
-  topics: string[];
-  image?: string; // Add this property
-  category?: string; // Add this property
-  processed_articles?: {
-    summary: string;
-    sentiment: 'positive' | 'neutral' | 'negative';
-    explanation?: string;
-  };
-}
-
 export interface UserPreference {
   id: string;
   user_id: string;
-  topic: string;
+  topic: NewsCategory;
   keywords: string[];
   preferred_sources: string[];
-}
-
-export interface Article {
-  id: string;
-  title: string;
-  content: string;
-  source: string;
-  published_at?: string; // Made optional to match the first declaration
-  url: string;
-  topics: string[];
-  processed_articles?: {
-    summary: string;
-    sentiment: 'positive' | 'neutral' | 'negative';
-    explanation?: string;
-  };
 }

@@ -5,9 +5,8 @@ import { Newspaper } from 'lucide-react';
 import { SearchBar } from './components/SearchBar';
 import { NewsCard } from './components/NewsCard';
 import type { NewsItem, NewsCategory } from './types';
-import { NhostProvider } from '@nhost/react';
+import { NhostProvider, useAuthenticated, useAuthLoading, useUserId } from '@nhost/react';
 import { NhostApolloProvider } from '@nhost/react-apollo';
-import { useAuthenticationStatus, useUserData } from '@nhost/react';
 import nhost from './utils/nhost';
 import { gql, useQuery } from '@apollo/client';
 
@@ -16,10 +15,12 @@ import Login from './components/Login';
 import Register from './components/Register';
 import UserPreferences from './components/UserPreferences';
 import Debug from './components/Debug';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated, isLoading } = useAuthenticationStatus();
+  const isAuthenticated = useAuthenticated();
+  const isLoading = useAuthLoading();
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-32 mt-8">
@@ -34,9 +35,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-// Main dashboard component
-// Update the Dashboard component to use Hasura actions
-// Update the Dashboard component to use your database schema
+// Update Dashboard component to use useUserId
 const Dashboard = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,9 +44,9 @@ const Dashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const user = useUserData();
+  const userId = useUserId();
 
-  // Query to get user preferences
+  // Update query to use userId
   const { data: preferencesData } = useQuery(gql`
     query GetUserPreferences($userId: uuid!) {
       user_preferences(where: {user_id: {_eq: $userId}}) {
@@ -57,8 +56,8 @@ const Dashboard = () => {
       }
     }
   `, {
-    variables: { userId: user?.id },
-    skip: !user?.id,
+    variables: { userId },
+    skip: !userId,
   });
 
   // Query to get articles
@@ -171,7 +170,10 @@ const Dashboard = () => {
                 Preferences
               </Link>
               <button 
-                onClick={() => nhost.auth.signOut()}
+                onClick={async () => {
+                  await nhost.auth.signOut();
+                  window.location.href = '/login';
+                }}
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
               >
                 Sign Out
@@ -224,34 +226,54 @@ const Dashboard = () => {
 
 // In your App function, update the NhostProvider usage
 function App() {
+  // Add a check to ensure nhost is properly initialized before rendering providers
+  if (!nhost) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-lg">Initializing application...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <NhostProvider nhost={nhost}>
-      <NhostApolloProvider nhost={nhost}>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/debug" element={<Debug />} />
-            <Route 
-              path="/" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/preferences" 
-              element={
-                <ProtectedRoute>
-                  <UserPreferences />
-                </ProtectedRoute>
-              } 
-            />
-          </Routes>
-        </Router>
-      </NhostApolloProvider>
-    </NhostProvider>
+    <ErrorBoundary>
+      <NhostProvider nhost={nhost}>
+        <NhostApolloProvider nhost={nhost}>
+          <Router>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/debug" element={<Debug />} />
+              {/* Temporarily commenting out the N8nTest route that's causing errors */}
+              {/* <Route path="/n8n-test" element={
+                <ErrorBoundary>
+                  <N8nTest />
+                </ErrorBoundary>
+              } /> */}
+              <Route 
+                path="/" 
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/preferences" 
+                element={
+                  <ProtectedRoute>
+                    <UserPreferences />
+                  </ProtectedRoute>
+                } 
+              />
+            </Routes>
+          </Router>
+        </NhostApolloProvider>
+      </NhostProvider>
+    </ErrorBoundary>
   );
 }
 

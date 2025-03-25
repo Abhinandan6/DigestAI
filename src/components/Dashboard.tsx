@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Newspaper } from 'lucide-react';
-import { useUserData } from '@nhost/react';
+import { useUserId } from '@nhost/react';
 import { gql, useQuery } from '@apollo/client';
 import { refreshUserNews } from '../utils/n8nService';
 import nhost from '../utils/nhost';
@@ -16,13 +16,12 @@ import { NewsCategory } from '../types'; // Import the NewsCategory type
 const Dashboard = () => {
   const [news, setNews] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  // Change the type from string to NewsCategory
   const [category, setCategory] = useState<NewsCategory>('general');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const user = useUserData();
+  const userId = useUserId();
 
   // Query to get user preferences
   const { data: preferencesData } = useQuery(gql`
@@ -34,8 +33,8 @@ const Dashboard = () => {
       }
     }
   `, {
-    variables: { userId: user?.id },
-    skip: !user?.id,
+    variables: { userId },
+    skip: !userId,
   });
 
   // Query to get articles
@@ -130,11 +129,12 @@ const Dashboard = () => {
   };
 
   // Add this function to your Dashboard component
+  // Update handleRefreshNews to use userId
   const handleRefreshNews = async () => {
-    if (user?.id) {
+    if (userId) {
       try {
         setLoading(true);
-        await refreshUserNews(user.id);
+        await refreshUserNews(userId);
         // Refetch articles after refresh
         fetchMore({
           variables: {
