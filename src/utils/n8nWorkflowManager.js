@@ -38,9 +38,10 @@ export class N8nWorkflowManager {
   /**
    * Execute workflow directly via webhook
    */
+  // Update the executeWorkflow method to use the Netlify Function
   async executeWorkflow(data) {
     try {
-      // Ensure data has all required properties to prevent "machine" undefined error
+      // Ensure data has all required properties
       const safeData = {
         userId: data?.userId || 'anonymous',
         action: data?.action || 'fetch',
@@ -54,7 +55,7 @@ export class N8nWorkflowManager {
   
       console.log('Executing workflow with data:', safeData);
   
-      // Use Netlify Function as a proxy to n8n
+      // Use Netlify Function instead of direct n8n webhook
       const response = await fetch('/.netlify/functions/n8n-proxy/news-flow', {
         method: 'POST',
         headers: {
@@ -74,12 +75,9 @@ export class N8nWorkflowManager {
     }
   }
 
-  /**
-   * Refresh news data
-   */
+  // Update the refreshNews method to use the Netlify Function
   async refreshNews() {
     try {
-      // Use Netlify Function as a proxy to n8n
       const response = await fetch('/.netlify/functions/n8n-proxy/refresh-news', {
         method: 'POST',
         headers: {
