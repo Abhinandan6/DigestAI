@@ -1,60 +1,96 @@
 // Ensure the correct environment variables are used
-const N8N_WEBHOOK_URL =
-  import.meta.env.VITE_N8N_WEBHOOK_URL ||
-  'https://n8n-dev.subspace.money/webhook/news-flow';
+const N8N_API_URL =
+  import.meta.env.VITE_N8N_API_URL ||
+  'https://n8n-dev.subspace.money';
 
-const N8N_REFRESH_WEBHOOK_URL =
-  import.meta.env.VITE_N8N_REFRESH_WEBHOOK_URL ||
-  'https://n8n-dev.subspace.money/webhook/refresh-news';
+// Use the direct workflow execution URL instead of webhooks
+const WORKFLOW_ID = 'DtIaPVohlfY06TR2';
+const WORKFLOW_EXECUTION_URL = `${N8N_API_URL}/api/v1/workflows/${WORKFLOW_ID}/execute`;
 
 /**
- * Generic function to make requests to n8n webhooks
+ * Generic function to make requests to n8n workflow execution
  */
-async function makeN8nRequest(url, payload) {
+async function executeWorkflow(payload) {
   try {
-    console.log(`🔹 Sending request to: ${url}`);
+    console.log(`🔹 Executing workflow: ${WORKFLOW_ID}`);
     console.log(`🔹 Payload:`, payload);
 
-    const response = await fetch(url, {
+    // Add a timestamp to help with debugging
+    const requestPayload = {
+      ...payload,
+      timestamp: new Date().toISOString(),
+      // For the current workflow structure, we need to simulate user preferences
+      // until the workflow is updated to handle direct requests
+      simulatedPreferences: {
+        topic: payload.preferences?.topic || 'technology',
+        keywords: payload.preferences?.keywords || [],
+        preferred_sources: payload.preferences?.preferred_sources || []
+      }
+    };
+
+    const response = await fetch(WORKFLOW_EXECUTION_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // Add API key if available
+        ...(import.meta.env.VITE_N8N_API_KEY && {
+          'X-N8N-API-KEY': import.meta.env.VITE_N8N_API_KEY
+        })
       },
-      body: JSON.stringify({
-        ...payload,
-        timestamp: new Date().toISOString(),
-      }),
+      body: JSON.stringify(requestPayload)
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`❌ Error from n8n: ${errorText}`);
-      throw new Error(`HTTP error! Status: ${response.status}, Response: ${errorText}`);
+      throw new Error(`N8N request failed: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    console.log(`✅ Response from n8n:`, data);
-
-    return { success: true, data };
+    console.log('🔹 N8N response:', data);
+    return {
+      success: true,
+      data
+    };
   } catch (error) {
-    console.error('❌ makeN8nRequest Error:', error);
+    console.error('❌ Error executing N8N workflow:', error);
     return {
       success: false,
-      message: error instanceof Error ? error.message : 'Unknown error occurred',
+      message: error.message
     };
   }
 }
 
 /**
- * Trigger the n8n workflow for fetching news updates based on user preferences
+ * Refresh news for a specific user
  */
-export const triggerNewsUpdate = async (userId, preferences) => {
-  return makeN8nRequest(N8N_WEBHOOK_URL, { userId, preferences });
-};
+export async function refreshUserNews(userId) {
+  if (!userId) {
+    return {
+      success: false,
+      message: 'User ID is required'
+    };
+  }
+
+  return executeWorkflow({
+    userId,
+    action: 'refresh'
+  });
+}
 
 /**
- * Refresh the user's news feed by triggering the refresh workflow in n8n
+ * Get news for a specific user with preferences
  */
-export const refreshUserNews = async (userId) => {
-  return makeN8nRequest(N8N_REFRESH_WEBHOOK_URL, { userId, action: 'refresh' });
-};
+export async function getUserNews(userId, preferences) {
+  if (!userId) {
+    return {
+      success: false,
+      message: 'User ID is required'
+    };
+  }
+
+  return executeWorkflow({
+    userId,
+    preferences,
+    action: 'fetch'
+  });
+}

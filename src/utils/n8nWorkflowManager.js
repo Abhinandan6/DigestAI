@@ -1,29 +1,15 @@
-;
-
-;
-}
-
-
 
 /**
  * Utility to manage n8n workflows programmatically
  */
 import newsUpdateWorkflow from '../n8n/workflows/newsUpdateWorkflow.json';
 
-// Fix for the string | undefined type issue and the missing workflowId property
-
 export class N8nWorkflowManager {
-  private apiUrl;
-  private apiKey;
-  private webhookUrl;
-  private refreshWebhookUrl;
-  private workflowId?; // Add workflowId property
-
   constructor(
-    apiUrl?,
-    apiKey?,
-    webhookUrl?,
-    refreshWebhookUrl?) {
+    apiUrl,
+    apiKey,
+    webhookUrl,
+    refreshWebhookUrl) {
     // Ensure default values are provided to avoid undefined
     this.apiUrl = apiUrl || 
       (typeof process !== 'undefined' && process.env?.VITE_N8N_API_URL) || 
@@ -39,22 +25,25 @@ export class N8nWorkflowManager {
     this.webhookUrl = webhookUrl || 
       (typeof process !== 'undefined' && process.env?.VITE_N8N_WEBHOOK_URL) || 
       (typeof import.meta !== 'undefined' && import.meta.env?.VITE_N8N_WEBHOOK_URL) || 
-      'https://n8n-dev.subspace.money/webhook/news-flow';
+      'https://n8n-dev.subspace.money/webhook-test/news-flow';
     
     this.refreshWebhookUrl = refreshWebhookUrl || 
       (typeof process !== 'undefined' && process.env?.VITE_N8N_REFRESH_WEBHOOK_URL) || 
       (typeof import.meta !== 'undefined' && import.meta.env?.VITE_N8N_REFRESH_WEBHOOK_URL) || 
-      'https://n8n-dev.subspace.money/webhook/refresh-news';
+      'https://n8n-dev.subspace.money/webhook-test/refresh-news';
+    
+    this.workflowId = null;
   }
 
   /**
    * Execute workflow directly via webhook
    */
-  async executeWorkflow(data: Partial): Promise {
+  async executeWorkflow(data) {
     try {
       // Ensure data has all required properties to prevent "machine" undefined error
       const safeData = {
         userId: data?.userId || 'anonymous',
+        action: data?.action || 'fetch',
         preferences: {
           topic: data?.preferences?.topic || 'general',
           keywords: Array.isArray(data?.preferences?.keywords) ? data.preferences.keywords : [],
@@ -62,6 +51,8 @@ export class N8nWorkflowManager {
         },
         timestamp: new Date().toISOString()
       };
+
+      console.log('Executing workflow with data:', safeData);
 
       const response = await fetch(this.webhookUrl, {
         method: 'POST',
@@ -83,108 +74,9 @@ export class N8nWorkflowManager {
   }
 
   /**
-   * Get credentials
+   * Refresh news data
    */
-  async getCredentials() {
-    try {
-      const response = await fetch(`${this.apiUrl}/credentials`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-N8N-API-KEY': this.apiKey,
-          'Authorization': `Bearer ${this.apiKey}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to get credentials: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error getting credentials:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Verify connection and get workflow details
-   */
-  async verifyConnection() {
-    try {
-      const response = await fetch(`${this.apiUrl}/workflows/${this.workflowId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-N8N-API-KEY': this.apiKey,
-          'Authorization': `Bearer ${this.apiKey}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to connect: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error verifying connection:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Deploy a workflow to n8n instance
-   */
-  async deployWorkflow(workflowData = newsUpdateWorkflow) {
-    try {
-      const response = await fetch(`${this.apiUrl}/workflows`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-N8N-API-KEY': this.apiKey
-        },
-        body: JSON.stringify(workflowData)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to deploy workflow: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error deploying n8n workflow:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Activate a workflow by ID
-   */
-  async activateWorkflow(workflowId) {
-    try {
-      const response = await fetch(`${this.apiUrl}/workflows/${workflowId}/activate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-N8N-API-KEY': this.apiKey
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to activate workflow: ${response.statusText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error activating n8n workflow:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Refresh news data for a user
-   */
-  async refreshNews(userId): Promise {
+  async refreshNews() {
     try {
       const response = await fetch(this.refreshWebhookUrl, {
         method: 'POST',
@@ -192,7 +84,6 @@ export class N8nWorkflowManager {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId,
           action: 'refresh',
           timestamp: new Date().toISOString()
         })
@@ -202,36 +93,12 @@ export class N8nWorkflowManager {
         throw new Error(`Failed to refresh news: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      return { success, data };
+      return await response.json();
     } catch (error) {
       console.error('Error refreshing news:', error);
-      return { 
-        success, 
-        error: error instanceof Error ? error.message : 'Unknown error occurred' 
-      };
+      throw error;
     }
-  }
-  // Update the method that uses workflowId
-  async triggerWorkflow(userId): Promise {
-    // Remove unused url declaration and define safeData
-    const safeData = {
-      userId,
-      timestamp: new Date().toISOString()
-    };
-
-    const response = await fetch(this.webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(safeData)
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to execute workflow: ${response.statusText}`);
-    }
-
-    return await response.json();
   }
 }
+
+export default N8nWorkflowManager;

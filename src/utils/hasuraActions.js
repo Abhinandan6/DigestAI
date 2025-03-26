@@ -1,7 +1,6 @@
 import { gql } from '@apollo/client';
 import apolloClient from './apollo';
 import nhost from './nhost';
-;
 
 // Function to get the current auth token
 const getAuthToken = () => {
@@ -18,8 +17,8 @@ export const fetchNews = async (
   category,
   searchQuery,
   page,
-  limit= 12
-): Promise => {
+  limit = 12
+) => {
   const GET_NEWS = gql`
     query GetArticles($topic: String!, $offset: Int!, $limit: Int!, $search) {
       articles(
@@ -83,7 +82,8 @@ export const updateUserPreferences = async (
   userId,
   categories,
   sources,
-  keywords) => {
+  keywords
+) => {
   const UPDATE_PREFERENCES = gql`
     mutation UpdateUserPreferences(
       $userId: uuid!, 

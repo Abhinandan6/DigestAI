@@ -1,212 +1,110 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Newspaper } from 'lucide-react';
-import { useUserId } from '@nhost/react';
-import { gql, useQuery } from '@apollo/client';
-import { refreshUserNews } from '../utils/n8nService';
-import nhost from '../utils/nhost';
-import { SearchBar } from '../components/SearchBar';
-import { NewsCard } from '../components/NewsCard';
-import { NewsCategory } from '../types'; // Import the NewsCategory type
+import React, { useEffect, useState } from 'react';
+import { useAuthenticationStatus, useUserData } from '@nhost/react';
+import { SearchBar } from './SearchBar';
+import { NewsCard } from './NewsCard';
+import newsService from '../utils/newsService';
 
-// First, let's create the types file
-// Create this file: e:\3.ABHI-ELEMENTS\SOLO-LVLNG\Projects\project\src\types.ts
-
-// Main dashboard component
 const Dashboard = () => {
+  const { isAuthenticated, isLoading } = useAuthenticationStatus();
+  const user = useUserData();
   const [news, setNews] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [category, setCategory] = useState('general');
-  const [loading, setLoading] = useState(true);
+  const [isLoadingNews, setIsLoadingNews] = useState(false);
   const [error, setError] = useState(null);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const userId = useUserId();
 
-  // Query to get user preferences
-  const { data: preferencesData } = useQuery(gql`
-    query GetUserPreferences($userId: uuid!) {
-      user_preferences(where: {user_id: {_eq: $userId}}) {
-        topic
-        keywords
-        preferred_sources
-      }
-    }
-  `, {
-    variables: { userId },
-    skip: !userId,
-  });
-
-  // Query to get articles
-  const { data, error, fetchMore } = useQuery(gql`
-    query GetArticles($topic: String!, $offset: Int!, $limit: Int!, $search) {
-      articles(
-        where: {
-          topics: {_contains: [$topic]}, 
-          _and: [
-            { title: { _ilike: $search } }
-          ]
-        }, 
-        order_by: {published_at: desc},
-        offset: $offset,
-        limit: $limit
-      ) {
-        id
-        title
-        content
-        source
-        published_at
-        url
-        topics
-        processed_articles {
-          summary
-          sentiment
-        }
-      }
-    }
-  `, {
-    variables: { 
-      topic,
-      offset: (page - 1) * 12,
-      limit,
-      search: searchQuery ? `%${searchQuery}%` : '%%'
-    },
-    fetchPolicy: "network-only"
-  });
-
-  // Set initial category from user preferences
   useEffect(() => {
-    if (preferencesData?.user_preferences?.length > 0) {
-      const prefs = preferencesData.user_preferences[0];
-      setCategory(prefs.topic.toLowerCase() as NewsCategory);
+    if (isAuthenticated && user) {
+      fetchNews();
     }
-  }, [preferencesData]);
+  }, [isAuthenticated, user]);
 
-  // Format articles data
-  useEffect(() => {
-    if (articlesData?.articles) {
-      const formattedNews = articlesData.articles.map((article) => ({
-        id: article.id,
-        title: article.title,
-        description: article.processed_articles?.[0]?.summary || article.content.substring(0, 150) + '...',
-        url: article.url,
-        image: `https://source.unsplash.com/random/800x600?${article.topics[0] || 'news'}`,
-        category: article.topics[0] || category,
-        published_at: article.published_at
-      }));
+  const fetchNews = async () => {
+    try {
+      setIsLoadingNews(true);
+      setError(null);
       
-      setNews(page === 1 ? formattedNews : [...news, ...formattedNews]);
-      setHasMore(formattedNews.length === 12);
-      setLoading(false);
-    }
-  }, [articlesData, category, page, news]);
-
-  // Handle errors
-  useEffect(() => {
-    if (articlesError) {
-      setError(articlesError.message);
-      setLoading(false);
-    }
-  }, [articlesError]);
-
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    setPage(1);
-  };
-  
-  const handleCategoryChange = (newCategory) => {
-    setCategory(newCategory as NewsCategory);
-    setPage(1);
-  };
-
-  const loadMore = () => {
-    fetchMore({
-      variables: {
-        offset: page * 12,
-      },
-    });
-    setPage(p => p + 1);
-  };
-
-  // Add this function to your Dashboard component
-  // Update handleRefreshNews to use userId
-  const handleRefreshNews = async () => {
-    if (userId) {
-      try {
-        setLoading(true);
-        await refreshUserNews(userId);
-        // Refetch articles after refresh
-        fetchMore({
-          variables: {
-            offset,
-          },
-        });
-        setPage(1);
-      } catch (error) {
-        console.error('Error refreshing news:', error);
-        setError('Failed to refresh news. Please try again later.');
-      } finally {
-        setLoading(false);
+      const result = await newsService.getNewsForUser();
+      
+      if (result.success && result.articles) {
+        setNews(result.articles);
+      } else {
+        setError('Failed to load news');
       }
+    } catch (err) {
+      console.error('Error fetching news:', err);
+      setError('An error occurred while fetching news');
+    } finally {
+      setIsLoadingNews(false);
     }
   };
+
+  const handleSearch = async (query) => {
+    try {
+      setIsLoadingNews(true);
+      setError(null);
+      
+      const result = await newsService.getNewsForUser({
+        topic: query,
+        keywords: [query]
+      });
+      
+      if (result.success && result.articles) {
+        setNews(result.articles);
+      } else {
+        setError('No results found');
+      }
+    } catch (err) {
+      console.error('Error searching news:', err);
+      setError('An error occurred while searching');
+    } finally {
+      setIsLoadingNews(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-green"></div>
+      </div>
+    );
+  }
 
   return (
-    
+    <div>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-white mb-2">Your News Dashboard</h1>
+        <p className="text-gray-400">Stay updated with the latest news tailored to your interests</p>
+      </div>
       
-        
-          
-            
-              
-              NewsFlow
-            
-            
-              
-                {loading ? 'Refreshing...' : 'Refresh News'}
-              
-              
-                Preferences
-              
-               nhost.auth.signOut()}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              >
-                Sign Out
-              
-            
-          
-        
+      <SearchBar onSearch={handleSearch} />
       
-
-      
-        
-        
-        {error && (
-          
-            {error}
-          
-        )}
-
-        
-          {news.map((item, index) => (
-            
+      {isLoadingNews ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-green"></div>
+        </div>
+      ) : error ? (
+        <div className="bg-red-900 text-white p-4 rounded-md mt-4">
+          {error}
+        </div>
+      ) : news.length === 0 ? (
+        <div className="bg-navy-800 p-6 rounded-lg mt-4 text-center">
+          <p className="text-gray-400">No news articles found. Try updating your preferences or search for a different topic.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          {news.map((article, index) => (
+            <NewsCard 
+              key={article.id || index}
+              title={article.title}
+              summary={article.summary}
+              sentiment={article.sentiment}
+              source={article.source}
+              url={article.url}
+              publishedAt={article.publishedAt}
+            />
           ))}
-        
-
-        {loading && (
-          
-            
-          
-        )}
-
-        {!loading && hasMore && (
-          
-            
-              Load More
-            
-          
-        )}
-      
-    
+        </div>
+      )}
+    </div>
   );
 };
 

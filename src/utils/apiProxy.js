@@ -1,10 +1,7 @@
-/**
- * API Proxy utility to handle CORS issues with external APIs
- */
-
-export async function proxyRequest(targetUrl, method, headers: Record, body?) {
+// Fix TypeScript syntax in apiProxy.js
+async function proxyRequest(targetUrl, method, headers, body) {
   try {
-    const options= {
+    const options = {
       method,
       headers,
       mode: 'cors',

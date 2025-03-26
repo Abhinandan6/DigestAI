@@ -12,7 +12,7 @@
   VITE_NHOST_REGION = "ap-south-1"
   # n8n integration environment variables
   VITE_N8N_API_URL = "https://n8n-dev.subspace.money"
-  VITE_N8N_WEBHOOK_URL = "https://n8n-dev.subspace.money/webhook/news-flow"
-  VITE_N8N_REFRESH_WEBHOOK_URL = "https://n8n-dev.subspace.money/webhook/refresh-news"
+  VITE_N8N_WEBHOOK_URL = "https://n8n-dev.subspace.money/webhook-test/news-flow"
+  VITE_N8N_REFRESH_WEBHOOK_URL = "https://n8n-dev.subspace.money/webhook-test/refresh-news"
   # Note: API keys should be set as build environment variables in Netlify dashboard
   # for security reasons, not in this file

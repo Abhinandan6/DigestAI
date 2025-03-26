@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import nhost from '../utils/nhost';
-import { SignUpParams } from '@nhost/nhost-js';
+// Remove this line: import { SignUpParams } from '@nhost/nhost-js';
 
 export function useSignUpEmailPassword() {
   const [isLoading, setIsLoading] = useState(false);
@@ -9,13 +9,15 @@ export function useSignUpEmailPassword() {
   const [error, setError] = useState(null);
   const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
   const [user, setUser] = useState(null);
+  const [userEmail, setUserEmail] = useState(''); // Store email for verification message
 
-  const signUpEmailPassword = async (email, password, options?) => {
+  const signUpEmailPassword = async (email, password, options = {}) => {
     setIsLoading(true);
     setIsError(false);
     setError(null);
     setNeedsEmailVerification(false);
     setUser(null);
+    setUserEmail(email); // Store the email for later use
 
     try {
       const signUpParams= {
@@ -25,6 +27,7 @@ export function useSignUpEmailPassword() {
       };
       
       const response = await nhost.auth.signUp(signUpParams);
+      console.log('Sign up response:', response); // Helpful for debugging
       
       // Check for error first
       if ('error' in response && response.error) {
@@ -40,8 +43,10 @@ export function useSignUpEmailPassword() {
       } else {
         // If no error and no session, it likely means email verification is required
         setNeedsEmailVerification(true);
+        setIsSuccess(true); // Consider registration successful even if verification is needed
       }
     } catch (err) {
+      console.error('Sign up error:', err); // Helpful for debugging
       setIsError(true);
       setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
@@ -56,6 +61,7 @@ export function useSignUpEmailPassword() {
     isError,
     error,
     needsEmailVerification,
-    user
+    user,
+    userEmail // Return the email for use in verification messages
   };
 }

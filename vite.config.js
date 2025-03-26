@@ -7,10 +7,10 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      port,
+      port: 5173, // Define the port explicitly
       host: '127.0.0.1',
-      open, // Opens browser automatically
-      hmr, // Simplified HMR config
+      open: true, // Opens browser automatically
+      hmr: true, // Simplified HMR config
     },
     define: {
       // Simplified environment variable handling
@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
       __VITE_N8N_REFRESH_WEBHOOK_URL__: JSON.stringify(env.VITE_N8N_REFRESH_WEBHOOK_URL)
     },
     build: {
-      chunkSizeWarningLimit,
+      chunkSizeWarningLimit: 600,
       rollupOptions: {
         output: {
           manualChunks: {

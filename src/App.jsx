@@ -1,77 +1,76 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import { Newspaper } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Newspaper, Settings, Home, Bug } from 'lucide-react';
+import { NhostProvider } from '@nhost/react';
 import { SearchBar } from './components/SearchBar';
 import { NewsCard } from './components/NewsCard';
-import { NhostProvider, useAuthenticated, useAuthenticationStatus, useUserId } from '@nhost/react';
-import { NhostApolloProvider } from '@nhost/react-apollo';
-import nhost from './utils/nhost';
-import { gql, useQuery } from '@apollo/client';
 import Login from './components/Login';
-import Register from './components/Register';
-import UserPreferences from './components/UserPreferences';
-import Debug from './components/Debug';
 import Dashboard from './components/Dashboard';
-
-// Protected route component
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuthenticated();
-  const { isLoading } = useAuthenticationStatus();
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center h-32 mt-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
-
-  return children;
-};
+import UserPreferences from './components/UserPreferences';
+import ProtectedRoute from './components/ProtectedRoute';
+import Debug from './components/Debug';
+import EmailVerification from './components/EmailVerification';
+import nhost from './utils/nhost';
 
 function App() {
-  if (!nhost) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="text-red-500">
-          Initializing application...
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    // Log styling information to console for verification
+    console.log('Tailwind CSS loaded with custom colors:');
+    console.log('- Neon Green: #39FF14');
+    console.log('- Neon Orange: #FF5F1F');
+    console.log('- Pista Green shades available');
+    console.log('- Navy shades available');
+  }, []);
 
   return (
     <NhostProvider nhost={nhost}>
-      <NhostApolloProvider nhost={nhost}>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/debug" element={<Debug />} />
-            <Route 
-              path="/preferences" 
-              element={
-                <ProtectedRoute>
-                  <UserPreferences />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/" 
-              element={
+      <Router>
+        <div className="min-h-screen bg-navy-900">
+          <header className="bg-navy-800 shadow-md p-4">
+            <div className="container mx-auto flex justify-between items-center">
+              <div className="flex items-center">
+                <Newspaper className="text-neon-green mr-2" size={24} />
+                <h1 className="text-2xl font-bold logo-text">NewsFlow</h1>
+              </div>
+              
+              {/* Add navigation menu */}
+              <nav className="hidden md:flex space-x-4">
+                <Link to="/" className="nav-link flex items-center">
+                  <Home size={18} className="mr-1" />
+                  Dashboard
+                </Link>
+                <Link to="/preferences" className="nav-link flex items-center">
+                  <Settings size={18} className="mr-1" />
+                  Preferences
+                </Link>
+                <Link to="/debug" className="nav-link flex items-center">
+                  <Bug size={18} className="mr-1" />
+                  Debug
+                </Link>
+              </nav>
+            </div>
+          </header>
+
+          <main className="container mx-auto py-8 px-4">
+            <Routes>
+              <Route path="/" element={
                 <ProtectedRoute>
                   <Dashboard />
                 </ProtectedRoute>
-              } 
-            />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </Router>
-      </NhostApolloProvider>
+              } />
+              <Route path="/login" element={<Login />} />
+              <Route path="/verify-email" element={<EmailVerification />} />
+              <Route path="/preferences" element={
+                <ProtectedRoute>
+                  <UserPreferences />
+                </ProtectedRoute>
+              } />
+              <Route path="/debug" element={<Debug />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
+        </div>
+      </Router>
     </NhostProvider>
   );
 }
