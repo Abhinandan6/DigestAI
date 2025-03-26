@@ -6,11 +6,11 @@ export function useSignUpEmailPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState(null);
   const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState(null);
 
-  const signUpEmailPassword = async (email: string, password: string, options?: any) => {
+  const signUpEmailPassword = async (email, password, options?) => {
     setIsLoading(true);
     setIsError(false);
     setError(null);
@@ -18,7 +18,7 @@ export function useSignUpEmailPassword() {
     setUser(null);
 
     try {
-      const signUpParams: SignUpParams = {
+      const signUpParams= {
         email,
         password,
         options

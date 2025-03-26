@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client';
 import apolloClient from './apollo';
 import nhost from './nhost';
-import type { NewsItem, NewsCategory } from '../types';
+;
 
 // Function to get the current auth token
 const getAuthToken = () => {
@@ -15,13 +15,13 @@ const getAuthToken = () => {
 
 // Function to get news using Hasura GraphQL
 export const fetchNews = async (
-  category: NewsCategory,
-  searchQuery: string,
-  page: number,
-  limit: number = 12
-): Promise<NewsItem[]> => {
+  category,
+  searchQuery,
+  page,
+  limit= 12
+): Promise => {
   const GET_NEWS = gql`
-    query GetArticles($topic: String!, $offset: Int!, $limit: Int!, $search: String) {
+    query GetArticles($topic: String!, $offset: Int!, $limit: Int!, $search) {
       articles(
         where: {
           topics: {_contains: [$topic]}, 
@@ -50,16 +50,16 @@ export const fetchNews = async (
 
   try {
     const { data } = await apolloClient.query({
-      query: GET_NEWS,
+      query,
       variables: {
-        topic: category,
+        topic,
         offset: (page - 1) * limit,
         limit,
         search: searchQuery ? `%${searchQuery}%` : '%%'
       }
     });
 
-    return data.articles.map((article: any) => ({
+    return data.articles.map((article) => ({
       id: article.id,
       title: article.title,
       description: article.processed_articles?.[0]?.summary || article.content.substring(0, 150) + '...',
@@ -80,18 +80,16 @@ export const fetchNews = async (
 
 // Function to update user preferences
 export const updateUserPreferences = async (
-  userId: string,
-  categories: string[],
-  sources: string[],
-  keywords: string[]
-) => {
+  userId,
+  categories,
+  sources,
+  keywords) => {
   const UPDATE_PREFERENCES = gql`
     mutation UpdateUserPreferences(
       $userId: uuid!, 
-      $categories: jsonb, 
-      $sources: jsonb, 
-      $keywords: jsonb
-    ) {
+      $categories, 
+      $sources, 
+      $keywords) {
       updateUserPreferences(
         userId: $userId, 
         categories: $categories, 
@@ -106,7 +104,7 @@ export const updateUserPreferences = async (
 
   try {
     const { data } = await apolloClient.mutate({
-      mutation: UPDATE_PREFERENCES,
+      mutation,
       variables: {
         userId,
         categories,

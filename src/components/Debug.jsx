@@ -1,7 +1,7 @@
 import React from 'react';
 import nhost from '../utils/nhost';
 
-const Debug: React.FC = () => {
+const Debug = () => {
   return (
     <div className="p-8 bg-gray-800 text-white min-h-screen">
       <h1 className="text-2xl font-bold mb-4">Debug Information</h1>

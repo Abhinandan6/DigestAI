@@ -14,11 +14,11 @@ import { NewsCategory } from '../types'; // Import the NewsCategory type
 
 // Main dashboard component
 const Dashboard = () => {
-  const [news, setNews] = useState<any[]>([]);
+  const [news, setNews] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [category, setCategory] = useState<NewsCategory>('general');
+  const [category, setCategory] = useState('general');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const userId = useUserId();
@@ -38,8 +38,8 @@ const Dashboard = () => {
   });
 
   // Query to get articles
-  const { data: articlesData, error: articlesError, fetchMore } = useQuery(gql`
-    query GetArticles($topic: String!, $offset: Int!, $limit: Int!, $search: String) {
+  const { data, error, fetchMore } = useQuery(gql`
+    query GetArticles($topic: String!, $offset: Int!, $limit: Int!, $search) {
       articles(
         where: {
           topics: {_contains: [$topic]}, 
@@ -66,9 +66,9 @@ const Dashboard = () => {
     }
   `, {
     variables: { 
-      topic: category,
+      topic,
       offset: (page - 1) * 12,
-      limit: 12,
+      limit,
       search: searchQuery ? `%${searchQuery}%` : '%%'
     },
     fetchPolicy: "network-only"
@@ -85,7 +85,7 @@ const Dashboard = () => {
   // Format articles data
   useEffect(() => {
     if (articlesData?.articles) {
-      const formattedNews = articlesData.articles.map((article: any) => ({
+      const formattedNews = articlesData.articles.map((article) => ({
         id: article.id,
         title: article.title,
         description: article.processed_articles?.[0]?.summary || article.content.substring(0, 150) + '...',
@@ -109,12 +109,12 @@ const Dashboard = () => {
     }
   }, [articlesError]);
 
-  const handleSearch = (query: string) => {
+  const handleSearch = (query) => {
     setSearchQuery(query);
     setPage(1);
   };
   
-  const handleCategoryChange = (newCategory: string) => {
+  const handleCategoryChange = (newCategory) => {
     setCategory(newCategory as NewsCategory);
     setPage(1);
   };
@@ -138,7 +138,7 @@ const Dashboard = () => {
         // Refetch articles after refresh
         fetchMore({
           variables: {
-            offset: 0,
+            offset,
           },
         });
         setPage(1);
@@ -152,74 +152,61 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-navy-900 text-gray-100">
-      <header className="py-6 border-b border-navy-700 sticky top-0 bg-navy-900/95 backdrop-blur-sm z-10">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Newspaper className="w-8 h-8 text-blue-500" />
-              <h1 className="text-3xl font-bold">NewsFlow</h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleRefreshNews}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 mr-4"
-                disabled={loading}
-              >
+    
+      
+        
+          
+            
+              
+              NewsFlow
+            
+            
+              
                 {loading ? 'Refreshing...' : 'Refresh News'}
-              </button>
-              <Link to="/preferences" className="text-blue-400 hover:text-blue-300">
+              
+              
                 Preferences
-              </Link>
-              <button 
-                onClick={() => nhost.auth.signOut()}
+              
+               nhost.auth.signOut()}
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
               >
                 Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+              
+            
+          
+        
+      
 
-      <main className="container mx-auto px-4 py-8">
-        <SearchBar 
-          onSearch={handleSearch}
-          onCategoryChange={handleCategoryChange}
-          selectedCategory={category}
-        />
+      
+        
         
         {error && (
-          <div className="text-red-500 text-center mb-8 p-4 bg-navy-800 rounded-lg">
+          
             {error}
-          </div>
+          
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        
           {news.map((item, index) => (
-            <NewsCard key={index} {...item} />
+            
           ))}
-        </div>
+        
 
         {loading && (
-          <div className="flex justify-center items-center h-32 mt-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
+          
+            
+          
         )}
 
         {!loading && hasMore && (
-          <div className="flex justify-center mt-8">
-            <button
-              onClick={loadMore}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 
-                       transition-colors font-medium"
-            >
+          
+            
               Load More
-            </button>
-          </div>
+            
+          
         )}
-      </main>
-    </div>
+      
+    
   );
 };
 

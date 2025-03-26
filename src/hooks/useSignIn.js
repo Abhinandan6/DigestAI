@@ -6,9 +6,9 @@ export const useSignInEmailPassword = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
   const [isError, setIsError] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState(null);
 
-  const signInEmailPassword = async (email: string, password: string) => {
+  const signInEmailPassword = async (email, password) => {
     setIsLoading(true);
     setIsError(false);
     setError(null);

@@ -2,9 +2,9 @@
  * API Proxy utility to handle CORS issues with external APIs
  */
 
-export async function proxyRequest(targetUrl: string, method: string, headers: Record<string, string>, body?: any) {
+export async function proxyRequest(targetUrl, method, headers: Record, body?) {
   try {
-    const options: RequestInit = {
+    const options= {
       method,
       headers,
       mode: 'cors',

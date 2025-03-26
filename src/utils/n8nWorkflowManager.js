@@ -1,19 +1,9 @@
-import type { NewsCategory } from '../types';
+;
 
-interface WorkflowData {
-  userId: string;
-  preferences: {
-    topic: NewsCategory;
-    keywords: string[];
-    preferred_sources: string[];
-  };
+;
 }
 
-interface N8nResponse {
-  success: boolean;
-  data?: any;
-  error?: string;
-}
+
 
 /**
  * Utility to manage n8n workflows programmatically
@@ -23,18 +13,17 @@ import newsUpdateWorkflow from '../n8n/workflows/newsUpdateWorkflow.json';
 // Fix for the string | undefined type issue and the missing workflowId property
 
 export class N8nWorkflowManager {
-  private apiUrl: string;
-  private apiKey: string;
-  private webhookUrl: string;
-  private refreshWebhookUrl: string;
-  private workflowId?: string; // Add workflowId property
+  private apiUrl;
+  private apiKey;
+  private webhookUrl;
+  private refreshWebhookUrl;
+  private workflowId?; // Add workflowId property
 
   constructor(
-    apiUrl?: string,
-    apiKey?: string,
-    webhookUrl?: string,
-    refreshWebhookUrl?: string
-  ) {
+    apiUrl?,
+    apiKey?,
+    webhookUrl?,
+    refreshWebhookUrl?) {
     // Ensure default values are provided to avoid undefined
     this.apiUrl = apiUrl || 
       (typeof process !== 'undefined' && process.env?.VITE_N8N_API_URL) || 
@@ -61,7 +50,7 @@ export class N8nWorkflowManager {
   /**
    * Execute workflow directly via webhook
    */
-  async executeWorkflow(data: Partial<WorkflowData>): Promise<N8nResponse> {
+  async executeWorkflow(data: Partial): Promise {
     try {
       // Ensure data has all required properties to prevent "machine" undefined error
       const safeData = {
@@ -171,7 +160,7 @@ export class N8nWorkflowManager {
   /**
    * Activate a workflow by ID
    */
-  async activateWorkflow(workflowId: string) {
+  async activateWorkflow(workflowId) {
     try {
       const response = await fetch(`${this.apiUrl}/workflows/${workflowId}/activate`, {
         method: 'POST',
@@ -195,7 +184,7 @@ export class N8nWorkflowManager {
   /**
    * Refresh news data for a user
    */
-  async refreshNews(userId: string): Promise<N8nResponse> {
+  async refreshNews(userId): Promise {
     try {
       const response = await fetch(this.refreshWebhookUrl, {
         method: 'POST',
@@ -214,17 +203,17 @@ export class N8nWorkflowManager {
       }
 
       const data = await response.json();
-      return { success: true, data };
+      return { success, data };
     } catch (error) {
       console.error('Error refreshing news:', error);
       return { 
-        success: false, 
+        success, 
         error: error instanceof Error ? error.message : 'Unknown error occurred' 
       };
     }
   }
   // Update the method that uses workflowId
-  async triggerWorkflow(userId: string): Promise<any> {
+  async triggerWorkflow(userId): Promise {
     // Remove unused url declaration and define safeData
     const safeData = {
       userId,
