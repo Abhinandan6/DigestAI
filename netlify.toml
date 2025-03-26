@@ -8,12 +8,15 @@
   to = "/index.html"
   status = 200
 
-[context.production.environment]
-  VITE_NHOST_SUBDOMAIN = "pmdddjhfyuqnpddamxhh"
-  VITE_NHOST_REGION = "ap-south-1"
-  # n8n integration environment variables
-  VITE_N8N_API_URL = "https://n8n-dev.subspace.money"
-  VITE_N8N_WEBHOOK_URL = "/.netlify/functions/n8n-proxy/news-flow"
-  VITE_N8N_REFRESH_WEBHOOK_URL = "/.netlify/functions/n8n-proxy/refresh-news"
-  # Note: API keys should be set as build environment variables in Netlify dashboard
-  # for security reasons, not in this file
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/n8n-proxy/:splat"
+  status = 200
+  force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, X-Environment"

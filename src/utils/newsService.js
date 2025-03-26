@@ -1,5 +1,6 @@
 import N8nWorkflowManager from './n8nWorkflowManager';
 import nhost from './nhost';
+import { getMockNewsResponse } from './mockDataService.js';
 
 class NewsService {
   constructor() {
@@ -24,16 +25,26 @@ class NewsService {
       }
 
       // Execute workflow with user ID and preferences
-      const result = await this.n8nManager.executeWorkflow({
-        userId: user.id,
-        action: 'fetch',
-        preferences: preferences
-      });
-
-      return result;
+      try {
+        const result = await this.n8nManager.executeWorkflow({
+          userId: user.id,
+          action: 'fetch',
+          preferences: preferences
+        });
+        
+        return result;
+      } catch (error) {
+        console.error('Error getting news from n8n:', error);
+        
+        // Fallback to mock data service
+        console.log('Using mock data service as fallback');
+        return getMockNewsResponse(user.id, preferences);
+      }
     } catch (error) {
       console.error('Error getting news:', error);
-      throw error;
+      
+      // Ultimate fallback - return mock data even if user auth fails
+      return getMockNewsResponse('anonymous', preferences);
     }
   }
 

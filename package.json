@@ -1,26 +1,13 @@
 {
-  "name": "newsflow",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "homepage": "./",
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "scripts": {
-    "start": "vite",
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "netlify-build": "npm run build",
-    "copy-json": "mkdir -p dist/src/n8n/workflows && copy src\\n8n\\workflows\\newsUpdateWorkflow.json dist\\src\\n8n\\workflows\\",
-    "setup-n8n": "node scripts/setupN8nWorkflows.js"
-  },
+  "name": "digestai",
+  "version": "0.1.0",
+  "proxy": "http://localhost:8888/.netlify/functions/n8n-proxy/",
   "dependencies": {
     "@apollo/client": "^3.13.5",
     "@nhost/nhost-js": "^3.2.6",
     "@nhost/react": "^3.10.2",
     "@nhost/react-apollo": "^17.0.2",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "graphql": "^16.10.0",
     "lucide-react": "^0.344.0",
