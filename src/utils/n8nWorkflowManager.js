@@ -51,21 +51,22 @@ export class N8nWorkflowManager {
         },
         timestamp: new Date().toISOString()
       };
-
+  
       console.log('Executing workflow with data:', safeData);
-
-      const response = await fetch(this.webhookUrl, {
+  
+      // Use Netlify Function as a proxy to n8n
+      const response = await fetch('/.netlify/functions/n8n-proxy/news-flow', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(safeData)
       });
-
+  
       if (!response.ok) {
         throw new Error(`Failed to execute workflow: ${response.statusText}`);
       }
-
+  
       return await response.json();
     } catch (error) {
       console.error('Error executing workflow:', error);
@@ -78,7 +79,8 @@ export class N8nWorkflowManager {
    */
   async refreshNews() {
     try {
-      const response = await fetch(this.refreshWebhookUrl, {
+      // Use Netlify Function as a proxy to n8n
+      const response = await fetch('/.netlify/functions/n8n-proxy/refresh-news', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,11 +90,11 @@ export class N8nWorkflowManager {
           timestamp: new Date().toISOString()
         })
       });
-
+  
       if (!response.ok) {
         throw new Error(`Failed to refresh news: ${response.statusText}`);
       }
-
+  
       return await response.json();
     } catch (error) {
       console.error('Error refreshing news:', error);
