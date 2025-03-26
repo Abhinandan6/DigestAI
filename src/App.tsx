@@ -5,22 +5,22 @@ import { Newspaper } from 'lucide-react';
 import { SearchBar } from './components/SearchBar';
 import { NewsCard } from './components/NewsCard';
 import type { NewsItem, NewsCategory } from './types';
-import { NhostProvider, useAuthenticated, useAuthLoading, useUserId } from '@nhost/react';
+import { NhostProvider, useAuthenticated, useAuthenticationStatus, useUserId } from '@nhost/react';
 import { NhostApolloProvider } from '@nhost/react-apollo';
 import nhost from './utils/nhost';
 import { gql, useQuery } from '@apollo/client';
-
 // Components for authentication and preferences
 import Login from './components/Login';
 import Register from './components/Register';
 import UserPreferences from './components/UserPreferences';
 import Debug from './components/Debug';
 import ErrorBoundary from './components/ErrorBoundary';
+import 'dotenv/config';
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const isAuthenticated = useAuthenticated();
-  const isLoading = useAuthLoading();
+  const isLoading = useAuthenticationStatus();
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-32 mt-8">

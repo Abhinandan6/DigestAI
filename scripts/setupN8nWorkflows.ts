@@ -3,10 +3,19 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+console.log("N8N_API_URL:", process.env.N8N_API_URL);
+console.log("N8N_API_KEY:", process.env.N8N_API_KEY);
+
+// Ensure values are correctly loaded before proceeding
+if (!process.env.VITE_N8N_API_URL || !process.env.VITE_N8N_API_KEY) {
+  console.error("Missing N8N environment variables. Check your .env file.");
+  process.exit(1);
+}
+
 async function setupWorkflows() {
   const n8nManager = new N8nWorkflowManager(
-    process.env.N8N_API_URL || '',
-    process.env.N8N_API_KEY || ''
+    process.env.VITE_N8N_API_URL || '',
+    process.env.VITE_N8N_API_KEY || ''
   );
 
   try {

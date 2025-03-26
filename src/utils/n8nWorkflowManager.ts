@@ -20,19 +20,42 @@ interface N8nResponse {
  */
 import newsUpdateWorkflow from '../n8n/workflows/newsUpdateWorkflow.json';
 
+// Fix for the string | undefined type issue and the missing workflowId property
+
 export class N8nWorkflowManager {
   private apiUrl: string;
   private apiKey: string;
-  private workflowId: string = 'DtIaPVohlfY06TR2';
+  private webhookUrl: string;
+  private refreshWebhookUrl: string;
+  private workflowId?: string; // Add workflowId property
 
   constructor(
-    apiUrl = import.meta.env.VITE_N8N_API_URL || 'https://n8n-dev.subspace.money',
-    apiKey = import.meta.env.VITE_N8N_API_KEY,
-    private webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL || 'https://n8n-dev.subspace.money/webhook/news-flow',
-    private refreshWebhookUrl = import.meta.env.VITE_N8N_REFRESH_WEBHOOK_URL || 'https://n8n-dev.subspace.money/webhook/refresh-news'
+    apiUrl?: string,
+    apiKey?: string,
+    webhookUrl?: string,
+    refreshWebhookUrl?: string
   ) {
-    this.apiUrl = apiUrl;
-    this.apiKey = apiKey;
+    // Ensure default values are provided to avoid undefined
+    this.apiUrl = apiUrl || 
+      (typeof process !== 'undefined' && process.env?.VITE_N8N_API_URL) || 
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_N8N_API_URL) || 
+      'https://n8n-dev.subspace.money';
+    
+    // Ensure apiKey is always a string
+    this.apiKey = apiKey || 
+      (typeof process !== 'undefined' && process.env?.VITE_N8N_API_KEY) || 
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_N8N_API_KEY) || 
+      '';
+    
+    this.webhookUrl = webhookUrl || 
+      (typeof process !== 'undefined' && process.env?.VITE_N8N_WEBHOOK_URL) || 
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_N8N_WEBHOOK_URL) || 
+      'https://n8n-dev.subspace.money/webhook/news-flow';
+    
+    this.refreshWebhookUrl = refreshWebhookUrl || 
+      (typeof process !== 'undefined' && process.env?.VITE_N8N_REFRESH_WEBHOOK_URL) || 
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_N8N_REFRESH_WEBHOOK_URL) || 
+      'https://n8n-dev.subspace.money/webhook/refresh-news';
   }
 
   /**
@@ -199,5 +222,27 @@ export class N8nWorkflowManager {
         error: error instanceof Error ? error.message : 'Unknown error occurred' 
       };
     }
+  }
+  // Update the method that uses workflowId
+  async triggerWorkflow(userId: string): Promise<any> {
+    // Remove unused url declaration and define safeData
+    const safeData = {
+      userId,
+      timestamp: new Date().toISOString()
+    };
+
+    const response = await fetch(this.webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(safeData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to execute workflow: ${response.statusText}`);
+    }
+
+    return await response.json();
   }
 }
