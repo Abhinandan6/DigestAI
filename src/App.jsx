@@ -3,7 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-ro
 import { Newspaper, Settings, Home, Bug } from 'lucide-react';
 import { NhostProvider } from '@nhost/react';
 import { ApolloProvider } from '@apollo/client';
-import { apolloClient } from './utils/apollo';
+// Change this line:
+//import { apolloClient } from './utils/apollo';
+
+// To this:
+import apolloClient from './utils/apollo';
 import { SearchBar } from './components/SearchBar';
 import { NewsCard } from './components/NewsCard';
 import Login from './components/Login';
