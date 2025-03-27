@@ -22,7 +22,13 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await signInEmailPassword(email, password);
+    const result = await signInEmailPassword(email, password);
+    // Debug log for authentication status
+    console.log('Auth Status:', {
+      success: isSuccess,
+      error: isError,
+      needsVerification: needsEmailVerification
+    });
   };
 
   if (isSuccess) {
