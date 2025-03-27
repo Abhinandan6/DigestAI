@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useAuthenticationStatus, useUserData } from '@nhost/react';
+import { useAuthenticationStatus, useUserData, useSignOut } from '@nhost/react';
+import { useNavigate } from 'react-router-dom';
 import { SearchBar } from './SearchBar';
 import { NewsCard } from './NewsCard';
 import newsService from '../utils/newsService';
@@ -7,6 +8,8 @@ import newsService from '../utils/newsService';
 const Dashboard = () => {
   const { isAuthenticated, isLoading } = useAuthenticationStatus();
   const user = useUserData();
+  const { signOut } = useSignOut();
+  const navigate = useNavigate();
   const [news, setNews] = useState([]);
   const [isLoadingNews, setIsLoadingNews] = useState(false);
   const [error, setError] = useState(null);
@@ -60,6 +63,11 @@ const Dashboard = () => {
     }
   };
 
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -69,41 +77,53 @@ const Dashboard = () => {
   }
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-white mb-2">Your News Dashboard</h1>
-        <p className="text-gray-400">Stay updated with the latest news tailored to your interests</p>
+    <div className="min-h-screen bg-navy-900 p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-100">Welcome, {user?.metadata?.name || 'User'}</h1>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition-colors"
+          >
+            Logout
+          </button>
+        </div>
+        
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-white mb-2">Your News Dashboard</h1>
+          <p className="text-gray-400">Stay updated with the latest news tailored to your interests</p>
+        </div>
+        
+        <SearchBar onSearch={handleSearch} />
+        
+        {isLoadingNews ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-green"></div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-900 text-white p-4 rounded-md mt-4">
+            {error}
+          </div>
+        ) : news.length === 0 ? (
+          <div className="bg-navy-800 p-6 rounded-lg mt-4 text-center">
+            <p className="text-gray-400">No news articles found. Try updating your preferences or search for a different topic.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+            {news.map((article, index) => (
+              <NewsCard 
+                key={article.id || index}
+                title={article.title}
+                summary={article.summary}
+                sentiment={article.sentiment}
+                source={article.source}
+                url={article.url}
+                publishedAt={article.publishedAt}
+              />
+            ))}
+          </div>
+        )}
       </div>
-      
-      <SearchBar onSearch={handleSearch} />
-      
-      {isLoadingNews ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-green"></div>
-        </div>
-      ) : error ? (
-        <div className="bg-red-900 text-white p-4 rounded-md mt-4">
-          {error}
-        </div>
-      ) : news.length === 0 ? (
-        <div className="bg-navy-800 p-6 rounded-lg mt-4 text-center">
-          <p className="text-gray-400">No news articles found. Try updating your preferences or search for a different topic.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          {news.map((article, index) => (
-            <NewsCard 
-              key={article.id || index}
-              title={article.title}
-              summary={article.summary}
-              sentiment={article.sentiment}
-              source={article.source}
-              url={article.url}
-              publishedAt={article.publishedAt}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 };

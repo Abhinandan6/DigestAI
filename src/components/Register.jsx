@@ -45,28 +45,19 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      console.log('Starting registration process...'); // Debug log
-      await signUpEmailPassword(email, password, {
+      const { error, session } = await signUpEmailPassword(email, password, {
         displayName: name,
-        metadata: {
-          name
-        }
+        metadata: { name },
+        redirectTo: `${window.location.origin}/login` // Add redirect URL for after verification
       });
-      console.log('Registration attempt completed'); // Debug log
+
+      if (error) {
+        console.error('Registration error:', error);
+      }
     } catch (error) {
-      console.error('Registration error:', error); // Debug log
+      console.error('Unexpected registration error:', error);
     }
   };
-
-  // Add this before your return statement
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-navy-900 flex flex-col justify-center items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-green"></div>
-        <p className="mt-4 text-gray-300">Creating your account...</p>
-      </div>
-    );
-  }
 
   // Show verification message if needed
   if (isSuccess && needsEmailVerification) {
@@ -83,7 +74,7 @@ const Register = () => {
             We've sent a verification email to <span className="text-neon-orange">{email}</span>
           </p>
           <p className="mt-2 text-center text-sm text-gray-400">
-            Please check your inbox and click the verification link to complete your registration.
+            Please check your inbox and click the verification link.
           </p>
           <div className="mt-6 text-center">
             <Link to="/login" className="text-neon-green hover:text-neon-orange">
@@ -102,8 +93,17 @@ const Register = () => {
 
   return (
     <div className="min-h-screen bg-navy-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="flex justify-center">
+          <Newspaper className="w-16 h-16 text-neon-green animate-pulse-neon" />
+        </div>
+        <h2 className="mt-6 text-center text-4xl font-extrabold logo-text">
+          Create your account
+        </h2>
+      </div>
+
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-navy-800 py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className="bg-navy-800 py-8 px-4 shadow-lg border border-navy-700 sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-300">
@@ -183,12 +183,18 @@ const Register = () => {
 
           <div className="mt-6">
             <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-navy-600"></div>
+              </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 text-gray-400">
+                <span className="px-2 bg-navy-800 text-gray-400">
                   Already have an account?{' '}
-                  <Link to="/login" className="font-medium text-neon-green hover:text-neon-orange">
+                  <button
+                    onClick={() => navigate('/login')}
+                    className="font-medium text-neon-green hover:text-neon-orange transition-colors"
+                  >
                     Sign in
-                  </Link>
+                  </button>
                 </span>
               </div>
             </div>

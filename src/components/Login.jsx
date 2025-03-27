@@ -1,8 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-// Change this line
-import { useSignInEmailPassword } from '@nhost/react';
-// To this
+// Remove the @nhost/react import and keep only the local hook
 import { useSignInEmailPassword } from '../hooks/useSignIn';
 import { Newspaper } from 'lucide-react';
 
@@ -12,6 +10,15 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const { signInEmailPassword, isLoading, isSuccess, needsEmailVerification, isError, error } = 
     useSignInEmailPassword();
+
+  useEffect(() => {
+    // Check if we're returning from email verification
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('verified') === 'true') {
+      // Show success message or handle verified state
+      console.log('Email verified successfully');
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -109,12 +116,12 @@ const Login = () => {
             </div>
 
             <div className="mt-6 text-center">
-              <Link
-                to="/register"
+              <button
+                onClick={() => navigate('/register')}
                 className="font-medium text-neon-orange hover:text-neon-green transition-colors"
               >
                 Register now
-              </Link>
+              </button>
             </div>
           </div>
         </div>
