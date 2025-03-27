@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useSignUpEmailPassword } from '../hooks/useSignUp'; // Updated import
 import { Newspaper, Mail } from 'lucide-react';
 import { gql, useMutation } from '@apollo/client';
@@ -193,12 +193,9 @@ const Register = () => {
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-navy-800 text-gray-400">
                   Already have an account?{' '}
-                  <button
-                    onClick={() => navigate('/login')}
-                    className="font-medium text-neon-green hover:text-neon-orange transition-colors"
-                  >
+                  <Link to="/login" className="font-medium text-neon-green hover:text-neon-orange transition-colors">
                     Sign in
-                  </button>
+                  </Link>
                 </span>
               </div>
             </div>
