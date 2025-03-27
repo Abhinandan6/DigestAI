@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import nhost from '../utils/nhost';
-// Remove this line: import { SignUpParams } from '@nhost/nhost-js';
 
 export function useSignUpEmailPassword() {
   const [isLoading, setIsLoading] = useState(false);
@@ -9,46 +8,41 @@ export function useSignUpEmailPassword() {
   const [error, setError] = useState(null);
   const [needsEmailVerification, setNeedsEmailVerification] = useState(false);
   const [user, setUser] = useState(null);
-  const [userEmail, setUserEmail] = useState(''); // Store email for verification message
 
   const signUpEmailPassword = async (email, password, options = {}) => {
     setIsLoading(true);
     setIsError(false);
     setError(null);
-    setNeedsEmailVerification(false);
-    setUser(null);
-    setUserEmail(email); // Store the email for later use
-
+    
     try {
-      const signUpParams= {
+      console.log('Attempting nhost signup...'); // Debug log
+      const { session, error: signUpError } = await nhost.auth.signUp({
         email,
         password,
-        options
-      };
-      
-      const response = await nhost.auth.signUp(signUpParams);
-      console.log('Sign up response:', response); // Helpful for debugging
-      
-      // Check for error first
-      if ('error' in response && response.error) {
-        setIsError(true);
-        setError(new Error(response.error.message || 'Registration failed'));
-      } 
-      // Then check for session
-      else if ('session' in response && response.session) {
-        setIsSuccess(true);
-        if (response.session?.user) {
-          setUser(response.session.user);
+        options: {
+          displayName: options.displayName,
+          metadata: options.metadata
         }
+      });
+
+      console.log('Signup response:', { session, error: signUpError }); // Debug log
+
+      if (signUpError) {
+        setIsError(true);
+        setError(new Error(signUpError.message));
+        setNeedsEmailVerification(signUpError.message.includes('email verification'));
+        console.error('Signup error:', signUpError); // Debug log
       } else {
-        // If no error and no session, it likely means email verification is required
-        setNeedsEmailVerification(true);
-        setIsSuccess(true); // Consider registration successful even if verification is needed
+        setIsSuccess(true);
+        if (session) {
+          setUser(session.user);
+          console.log('Signup successful, user:', session.user); // Debug log
+        }
       }
     } catch (err) {
-      console.error('Sign up error:', err); // Helpful for debugging
+      console.error('Unexpected error during signup:', err); // Debug log
       setIsError(true);
-      setError(err instanceof Error ? err : new Error(String(err)));
+      setError(err instanceof Error ? err : new Error('Registration failed'));
     } finally {
       setIsLoading(false);
     }
@@ -58,10 +52,9 @@ export function useSignUpEmailPassword() {
     signUpEmailPassword,
     isLoading,
     isSuccess,
+    needsEmailVerification,
     isError,
     error,
-    needsEmailVerification,
-    user,
-    userEmail // Return the email for use in verification messages
+    user
   };
 }

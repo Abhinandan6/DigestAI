@@ -1,6 +1,11 @@
 {
   "name": "digestai",
   "version": "0.1.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
   "proxy": "http://localhost:8888/.netlify/functions/n8n-proxy/",
   "dependencies": {
     "@apollo/client": "^3.13.5",

@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+// Change this line
 import { useSignInEmailPassword } from '@nhost/react';
+// To this
+import { useSignInEmailPassword } from '../hooks/useSignIn';
 import { Newspaper } from 'lucide-react';
 
 const Login = () => {

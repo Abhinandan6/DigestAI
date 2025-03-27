@@ -17,6 +17,16 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
-    Access-Control-Allow-Headers = "Content-Type, X-Environment"
+    Access-Control-Allow-Origin = "https://digestai.netlify.app"
+    Access-Control-Allow-Methods = "POST, GET, OPTIONS, DELETE, PUT"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Environment, X-Force-Proxy"
+    Access-Control-Allow-Credentials = "true"
+
+# Handle preflight requests
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "https://digestai.netlify.app"
+    Access-Control-Allow-Methods = "POST, GET, OPTIONS, DELETE, PUT"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Environment, X-Force-Proxy"
+    Access-Control-Max-Age = "86400"
