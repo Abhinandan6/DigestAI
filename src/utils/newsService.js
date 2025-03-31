@@ -1,7 +1,8 @@
 import N8nWorkflowManager from './n8nWorkflowManager';
 import nhost from './nhost';
 import { getMockNewsResponse } from './mockDataService.js';
-import { gql } from 'graphql-tag';
+import { gql } from '@apollo/client';
+import apolloClient from './apollo';
 
 class NewsService {
   constructor() {
@@ -26,6 +27,9 @@ class NewsService {
         throw new Error('User not authenticated');
       }
       
+      // Get user preferences if not provided
+      const userPrefs = preferences || await this.getUserPreferences();
+      
       // Use GraphQL query to fetch news via Hasura action
       const { data } = await apolloClient.query({
         query: gql`
@@ -46,9 +50,9 @@ class NewsService {
         `,
         variables: {
           userId: user.id,
-          topic: preferences?.topic || 'general',
-          keywords: preferences?.keywords || [],
-          sources: preferences?.preferred_sources || []
+          topic: userPrefs?.topic || 'general',
+          keywords: userPrefs?.keywords || [],
+          sources: userPrefs?.preferred_sources || []
         }
       });
       
