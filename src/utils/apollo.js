@@ -2,15 +2,20 @@ import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import nhost from './nhost';
 
-// Create the basic HTTP link
+// Log the GraphQL URL to verify it's being loaded correctly
+console.log('Hasura GraphQL URL:', import.meta.env.VITE_HASURA_GRAPHQL_URL);
+
+// Create an HTTP link that points to your Hasura GraphQL endpoint
 const httpLink = createHttpLink({
-  uri: import.meta.env.VITE_HASURA_GRAPHQL_URL,
+  uri: import.meta.env.VITE_HASURA_GRAPHQL_URL || 'https://pmdddjhfyuqnpddamxhh.hasura.ap-south-1.nhost.run/v1/graphql',
 });
 
-// Add auth token to every request
+// Add authentication to your requests
 const authLink = setContext((_, { headers }) => {
+  // Get the authentication token from Nhost
   const token = nhost.auth.getAccessToken();
   
+  // Return the headers to the context so httpLink can read them
   return {
     headers: {
       ...headers,
@@ -19,9 +24,8 @@ const authLink = setContext((_, { headers }) => {
   };
 });
 
-// Create Apollo Client with auth configuration
+// Create the Apollo Client instance
 const apolloClient = new ApolloClient({
-  uri: import.meta.env.VITE_HASURA_GRAPHQL_URL || 'https://your-nhost-project.hasura.app/v1/graphql',
   link: authLink.concat(httpLink),
   cache: new InMemoryCache()
 });

@@ -1,6 +1,5 @@
 import N8nWorkflowManager from './n8nWorkflowManager';
 import nhost from './nhost';
-import { getMockNewsResponse } from './mockDataService.js';
 import { gql } from '@apollo/client';
 import apolloClient from './apollo';
 
@@ -30,10 +29,10 @@ class NewsService {
       // Get user preferences if not provided
       const userPrefs = preferences || await this.getUserPreferences();
       
-      // Use GraphQL query to fetch news via Hasura action
-      const { data } = await apolloClient.query({
-        query: gql`
-          query FetchNews($userId: String!, $topic: String!, $keywords: [String], $sources: [String]) {
+      // Use GraphQL mutation to fetch news via Hasura action
+      const { data } = await apolloClient.mutate({
+        mutation: gql`
+          mutation FetchNews($userId: String!, $topic: String!, $keywords: [String!], $sources: [String!]) {
             fetchNews(userId: $userId, topic: $topic, keywords: $keywords, sources: $sources) {
               success
               articles {
