@@ -66,9 +66,19 @@ class NewsService {
   // Update the refreshNews method
   async refreshNews() {
     try {
-      // Use Hasura Action instead of direct n8n call
-      const { refreshNewsWithAction } = await import('./hasuraActionsClient');
-      return await refreshNewsWithAction();
+      // Use GraphQL mutation to refresh news via Hasura action
+      const { data } = await apolloClient.mutate({
+        mutation: gql`
+          mutation RefreshNews {
+            refreshNews {
+              success
+              message
+            }
+          }
+        `
+      });
+      
+      return data.refreshNews;
     } catch (error) {
       console.error('Error refreshing news:', error);
       return { success: false, message: error.message };
