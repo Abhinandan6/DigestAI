@@ -21,6 +21,7 @@ const authLink = setContext((_, { headers }) => {
 
 // Create Apollo Client with auth configuration
 const apolloClient = new ApolloClient({
+  uri: import.meta.env.VITE_HASURA_GRAPHQL_URL || 'https://your-nhost-project.hasura.app/v1/graphql',
   link: authLink.concat(httpLink),
   cache: new InMemoryCache()
 });
