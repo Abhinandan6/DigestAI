@@ -1,6 +1,7 @@
 import N8nWorkflowManager from './n8nWorkflowManager';
 import nhost from './nhost';
 import { getMockNewsResponse } from './mockDataService.js';
+import { gql } from 'graphql-tag';
 
 class NewsService {
   constructor() {
@@ -15,6 +16,7 @@ class NewsService {
   /**
    * Get news for the current user
    */
+  // Update the getNewsForUser method to use Hasura Actions
   async getNewsForUser(preferences = null) {
     try {
       // Get current user
@@ -23,31 +25,51 @@ class NewsService {
       if (!user) {
         throw new Error('User not authenticated');
       }
-
-      // Execute workflow with user ID and preferences
-      try {
-        const result = await this.n8nManager.executeWorkflow({
-          userId: user.id,
-          action: 'fetch',
-          preferences: preferences
-        });
-        
-        return result;
-      } catch (error) {
-        console.error('Error getting news from n8n:', error);
-        
-        // Fallback to mock data service
-        console.log('Using mock data service as fallback');
-        return getMockNewsResponse(user.id, preferences);
-      }
-    } catch (error) {
-      console.error('Error getting news:', error);
       
-      // Ultimate fallback - return mock data even if user auth fails
-      return getMockNewsResponse('anonymous', preferences);
+      // Use GraphQL query to fetch news via Hasura action
+      const { data } = await apolloClient.query({
+        query: gql`
+          query FetchNews($userId: String!, $topic: String!, $keywords: [String], $sources: [String]) {
+            fetchNews(userId: $userId, topic: $topic, keywords: $keywords, sources: $sources) {
+              success
+              articles {
+                id
+                title
+                summary
+                sentiment
+                url
+                source
+                publishedAt
+              }
+            }
+          }
+        `,
+        variables: {
+          userId: user.id,
+          topic: preferences?.topic || 'general',
+          keywords: preferences?.keywords || [],
+          sources: preferences?.preferred_sources || []
+        }
+      });
+      
+      return data.fetchNews.articles;
+    } catch (error) {
+      console.error('Error fetching news:', error);
+      return [];
     }
   }
 
+  // Update the refreshNews method
+  async refreshNews() {
+    try {
+      // Use Hasura Action instead of direct n8n call
+      const { refreshNewsWithAction } = await import('./hasuraActionsClient');
+      return await refreshNewsWithAction();
+    } catch (error) {
+      console.error('Error refreshing news:', error);
+      return { success: false, message: error.message };
+    }
+  }
   /**
    * Save user preferences
    */
