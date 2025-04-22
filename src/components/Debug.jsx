@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import nhost from '../utils/nhost';
-import { refreshUserNews } from '../utils/n8nService';
+import { refreshUserNews } from '../utils/n8nservice';
 
 const Debug = () => {
   const [workflowStatus, setWorkflowStatus] = useState(null);

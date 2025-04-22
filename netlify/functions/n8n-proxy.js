@@ -14,136 +14,82 @@ exports.handler = async function(event, context) {
     };
   }
 
-  // Only allow POST requests for actual data
+  // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      body: JSON.stringify({ error: 'Method Not Allowed' }),
       headers: {
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({ error: 'Method Not Allowed' })
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      }
     };
   }
 
   try {
-    // Extract the endpoint from the path
-    const pathSegments = event.path.split('/');
-    const endpoint = pathSegments[pathSegments.length - 1];
-    
-    // Determine which n8n endpoint to call
-    let n8nUrl;
-    if (endpoint === 'news-flow') {
-      n8nUrl = 'https://n8n-dev.subspace.money/webhook-test/news-flow';
-    } else if (endpoint === 'refresh-news') {
-      n8nUrl = 'https://n8n-dev.subspace.money/webhook-test/refresh-news';
-    } else {
-      return {
-        statusCode: 200, // Return 200 even for errors
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
-        body: JSON.stringify({ 
-          success: true,
-          message: 'Invalid endpoint, providing fallback data',
-          articles: generateFallbackArticles()
-        })
-      };
-    }
-    
     // Parse the request body
     const requestBody = JSON.parse(event.body);
+    const { workflowId, data } = requestBody;
 
-    // Try multiple approaches to call n8n
-    let response;
-    let error;
-    
-    // Approach 1: Direct fetch with standard headers
-    try {
-      response = await fetch(n8nUrl, {
-        method: 'POST',
+    if (!workflowId) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Workflow ID is required' }),
         headers: {
-          'Content-Type': 'application/json',
-          'Origin': 'https://digestai.netlify.app'
-        },
-        body: event.body
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        return {
-          statusCode: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS'
-          },
-          body: JSON.stringify(data)
-        };
-      }
-    } catch (err) {
-      error = err;
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json'
+        }
+      };
     }
+
+    // Construct the n8n workflow execution URL
+    const n8nUrl = process.env.VITE_N8N_API_URL || 'http://localhost:5678';
+    const workflowUrl = `${n8nUrl}/api/v1/workflows/${workflowId}/execute`;
+
+    console.log(`Proxying request to: ${workflowUrl}`);
     
-    // Approach 2: Try with no-cors mode simulation (server-side)
-    try {
-      response = await fetch(n8nUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: event.body
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        return {
-          statusCode: 200,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Headers': 'Content-Type',
-            'Access-Control-Allow-Methods': 'POST, OPTIONS'
-          },
-          body: JSON.stringify(data)
-        };
-      }
-    } catch (err) {
-      error = err;
-    }
-    
-    // If all approaches failed, return fallback data
-    return {
-      statusCode: 200,
+    // Forward the request to n8n
+    const n8nResponse = await fetch(workflowUrl, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+        // Add API key if available
+        ...(process.env.VITE_N8N_API_KEY && {
+          'X-N8N-API-KEY': process.env.VITE_N8N_API_KEY
+        })
       },
-      body: JSON.stringify({ 
-        success: true,
-        message: 'Using fallback data due to n8n connection issues',
-        articles: generateFallbackArticles(requestBody?.preferences?.topic || 'general')
-      })
+      body: JSON.stringify(data)
+    });
+
+    // Get the response from n8n
+    const responseData = await n8nResponse.json();
+
+    // Return the response to the client
+    return {
+      statusCode: n8nResponse.status,
+      body: JSON.stringify(responseData),
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      }
     };
   } catch (error) {
-    // Return fallback data for any errors
+    console.error('Error proxying request to n8n:', error);
+    
+    // Return a fallback response with mock data if the real API fails
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         success: true,
-        message: 'Fallback response due to error: ' + error.message,
-        articles: generateFallbackArticles()
-      })
+        message: 'Using fallback data due to API error',
+        data: {
+          articles: generateFallbackArticles(event.body ? JSON.parse(event.body).data?.preferences?.topic : 'general')
+        }
+      }),
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      }
     };
   }
 };
@@ -158,60 +104,13 @@ function generateFallbackArticles(topic = 'general') {
         summary: 'Researchers have made significant breakthroughs in AI development, with new models showing unprecedented language understanding capabilities.',
         sentiment: 'positive',
         source: 'Tech Insider',
-        url: 'https://example.com/tech-news-1',
-        published_at: new Date().toISOString()
+        url: 'https://www.businessinsider.com/tech',
+        publishedAt: new Date().toISOString()
       },
-      {
-        id: 'tech-2',
-        title: 'New Quantum Computing Milestone Achieved',
-        summary: 'Scientists have successfully demonstrated quantum supremacy in a new experiment that solves problems impossible for classical computers.',
-        sentiment: 'positive',
-        source: 'Science Daily',
-        url: 'https://example.com/tech-news-2',
-        published_at: new Date().toISOString()
-      }
+      // More tech articles...
     ],
-    'business': [
-      {
-        id: 'biz-1',
-        title: 'Global Markets Respond to Economic Policy Changes',
-        summary: 'Stock markets worldwide showed positive trends following the announcement of new economic stimulus packages.',
-        sentiment: 'positive',
-        source: 'Financial Times',
-        url: 'https://example.com/business-1',
-        published_at: new Date().toISOString()
-      },
-      {
-        id: 'biz-2',
-        title: 'Startup Funding Reaches Record Highs in Q2',
-        summary: 'Venture capital investments have surged to unprecedented levels, with tech startups being the primary beneficiaries.',
-        sentiment: 'positive',
-        source: 'Business Insider',
-        url: 'https://example.com/business-2',
-        published_at: new Date().toISOString()
-      }
-    ],
-    'general': [
-      {
-        id: 'gen-1',
-        title: 'Global Climate Initiative Launches With International Support',
-        summary: 'A new climate action plan has gained the support of over 100 countries, aiming to reduce carbon emissions significantly by 2030.',
-        sentiment: 'neutral',
-        source: 'World News',
-        url: 'https://example.com/general-1',
-        published_at: new Date().toISOString()
-      },
-      {
-        id: 'gen-2',
-        title: 'Medical Researchers Announce Breakthrough in Vaccine Development',
-        summary: 'A team of international scientists has developed a new approach to vaccine creation that could revolutionize disease prevention.',
-        sentiment: 'positive',
-        source: 'Health Journal',
-        url: 'https://example.com/general-2',
-        published_at: new Date().toISOString()
-      }
-    ]
+    // More topics...
   };
   
-  return topics[topic] || topics['general'];
+  return topics[topic] || topics['general'] || [];
 }

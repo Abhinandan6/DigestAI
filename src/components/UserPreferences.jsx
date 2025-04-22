@@ -1,233 +1,257 @@
-import React, { useEffect, useState } from 'react';
-import { useAuthenticationStatus } from '@nhost/react';
-import newsService from '../utils/newsService';
+import React, { useState, useEffect } from 'react';
+import { useUserData } from '@nhost/react';
+import { useMutation, useQuery, gql } from '@apollo/client';
 
-const UserPreferences = () => {
-  const { isAuthenticated, isLoading } = useAuthenticationStatus();
+// GraphQL query to get user preferences
+const GET_USER_PREFERENCES = gql`
+  query GetUserPreferences($userId: uuid!) {
+    user_preferences(where: {user_id: {_eq: $userId}}) {
+      id
+      topic
+      keywords
+      preferred_sources
+    }
+  }
+`;
+
+// GraphQL mutation to update user preferences
+const UPDATE_USER_PREFERENCES = gql`
+  mutation UpdateUserPreferences(
+    $userId: uuid!, 
+    $topic: String!, 
+    $keywords: jsonb, 
+    $preferred_sources: jsonb
+  ) {
+    insert_user_preferences(
+      objects: {
+        user_id: $userId, 
+        topic: $topic, 
+        keywords: $keywords, 
+        preferred_sources: $preferred_sources
+      },
+      on_conflict: {
+        constraint: user_preferences_user_id_key,
+        update_columns: [topic, keywords, preferred_sources]
+      }
+    ) {
+      returning {
+        id
+      }
+    }
+  }
+`;
+
+const CATEGORY_OPTIONS = [
+  'general', 'business', 'technology', 'entertainment', 'sports', 
+  'science', 'health', 'politics', 'world'
+];
+
+const SOURCE_OPTIONS = [
+  'BBC News', 'CNN', 'The New York Times', 'Reuters', 
+  'Associated Press', 'The Guardian', 'The Washington Post'
+];
+
+const UserPreferences = ({ onSave, onCancel }) => {
+  const user = useUserData();
+  const userId = user?.id;
+  
   const [preferences, setPreferences] = useState({
     topic: 'general',
     keywords: [],
     preferred_sources: []
   });
+  
   const [newKeyword, setNewKeyword] = useState('');
-  const [newSource, setNewSource] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoadingPrefs, setIsLoadingPrefs] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
-
-  // Available topics
-  const topics = [
-    'general', 'business', 'entertainment', 'health', 
-    'science', 'sports', 'technology', 'politics'
-  ];
-
+  
+  // Query to get existing preferences
+  const { loading, error, data } = useQuery(GET_USER_PREFERENCES, {
+    variables: { userId },
+    skip: !userId,
+    fetchPolicy: 'network-only'
+  });
+  
+  // Mutation to update preferences
+  const [updatePreferences] = useMutation(UPDATE_USER_PREFERENCES);
+  
+  // Load existing preferences
   useEffect(() => {
-    if (isAuthenticated) {
-      loadUserPreferences();
-    }
-  }, [isAuthenticated]);
-
-  const loadUserPreferences = async () => {
-    try {
-      setIsLoadingPrefs(true);
-      const userPrefs = await newsService.getUserPreferences();
+    if (data?.user_preferences?.length > 0) {
+      const userPrefs = data.user_preferences[0];
       setPreferences({
         topic: userPrefs.topic || 'general',
         keywords: userPrefs.keywords || [],
         preferred_sources: userPrefs.preferred_sources || []
       });
-    } catch (error) {
-      console.error('Error loading preferences:', error);
-      setMessage({ type: 'error', text: 'Failed to load your preferences' });
-    } finally {
-      setIsLoadingPrefs(false);
     }
+  }, [data]);
+  
+  const handleTopicChange = (topic) => {
+    setPreferences(prev => ({ ...prev, topic }));
   };
-
-  const handleTopicChange = (e) => {
-    setPreferences({ ...preferences, topic: e.target.value });
+  
+  const handleSourceToggle = (source) => {
+    setPreferences(prev => {
+      const sources = [...prev.preferred_sources];
+      if (sources.includes(source)) {
+        return { ...prev, preferred_sources: sources.filter(s => s !== source) };
+      } else {
+        return { ...prev, preferred_sources: [...sources, source] };
+      }
+    });
   };
-
+  
   const addKeyword = () => {
-    if (newKeyword && !preferences.keywords.includes(newKeyword)) {
-      setPreferences({
-        ...preferences,
-        keywords: [...preferences.keywords, newKeyword]
-      });
+    if (newKeyword.trim() && !preferences.keywords.includes(newKeyword.trim())) {
+      setPreferences(prev => ({
+        ...prev,
+        keywords: [...prev.keywords, newKeyword.trim()]
+      }));
       setNewKeyword('');
     }
   };
-
+  
   const removeKeyword = (keyword) => {
-    setPreferences({
-      ...preferences,
-      keywords: preferences.keywords.filter(k => k !== keyword)
-    });
+    setPreferences(prev => ({
+      ...prev,
+      keywords: prev.keywords.filter(k => k !== keyword)
+    }));
   };
-
-  const addSource = () => {
-    if (newSource && !preferences.preferred_sources.includes(newSource)) {
-      setPreferences({
-        ...preferences,
-        preferred_sources: [...preferences.preferred_sources, newSource]
-      });
-      setNewSource('');
-    }
-  };
-
-  const removeSource = (source) => {
-    setPreferences({
-      ...preferences,
-      preferred_sources: preferences.preferred_sources.filter(s => s !== source)
-    });
-  };
-
-  const savePreferences = async () => {
+  
+  const handleSave = async () => {
+    if (!userId) return;
+    
+    setIsSaving(true);
     try {
-      setIsSaving(true);
-      setMessage({ type: '', text: '' });
-      
-      await newsService.saveUserPreferences(preferences);
-      
-      setMessage({ 
-        type: 'success', 
-        text: 'Preferences saved successfully! Your news feed will now be updated.' 
+      await updatePreferences({
+        variables: {
+          userId,
+          topic: preferences.topic,
+          keywords: preferences.keywords,
+          preferred_sources: preferences.preferred_sources
+        }
       });
-    } catch (error) {
-      console.error('Error saving preferences:', error);
-      setMessage({ 
-        type: 'error', 
-        text: 'Failed to save preferences. Please try again.' 
-      });
+      
+      if (onSave) {
+        onSave(preferences);
+      }
+    } catch (err) {
+      console.error('Error saving preferences:', err);
     } finally {
       setIsSaving(false);
     }
   };
-
-  if (isLoading || isLoadingPrefs) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-neon-green"></div>
-      </div>
-    );
-  }
-
+  
+  if (loading) return <div className="text-center p-4">Loading preferences...</div>;
+  
   return (
-    <div className="bg-navy-800 rounded-lg shadow-lg p-6">
-      <h1 className="text-2xl font-bold text-white mb-6">Customize Your News Feed</h1>
+    <div className="bg-navy-800 rounded-lg shadow-md p-6 max-w-2xl mx-auto">
+      <h2 className="text-xl font-bold text-white mb-6">Customize Your News Feed</h2>
       
-      {message.text && (
-        <div className={`p-4 mb-6 rounded-md ${
-          message.type === 'success' ? 'bg-green-900 text-green-100' : 'bg-red-900 text-red-100'
-        }`}>
-          {message.text}
+      {/* Topic Selection */}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-white mb-3">News Categories</h3>
+        <p className="text-gray-300 mb-3">Select your preferred news category:</p>
+        <div className="flex flex-wrap gap-2">
+          {CATEGORY_OPTIONS.map(category => (
+            <button
+              key={category}
+              type="button"
+              onClick={() => handleTopicChange(category)}
+              className={`px-3 py-1 rounded text-sm ${
+                preferences.topic === category
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-navy-700 text-gray-300 hover:bg-navy-600'
+              }`}
+            >
+              {category.charAt(0).toUpperCase() + category.slice(1)}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
       
-      <div className="space-y-6">
-        {/* Topic Selection */}
-        <div>
-          <label className="block text-gray-300 mb-2 font-medium">Primary News Topic</label>
-          <select
-            value={preferences.topic}
-            onChange={handleTopicChange}
-            className="w-full bg-navy-700 border border-navy-600 rounded-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-neon-green"
-          >
-            {topics.map(topic => (
-              <option key={topic} value={topic}>
-                {topic.charAt(0).toUpperCase() + topic.slice(1)}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-sm text-gray-400">This will be the main focus of your news feed</p>
-        </div>
-        
-        {/* Keywords */}
-        <div>
-          <label className="block text-gray-300 mb-2 font-medium">Keywords</label>
-          <div className="flex">
-            <input
-              type="text"
-              value={newKeyword}
-              onChange={(e) => setNewKeyword(e.target.value)}
-              placeholder="Add a keyword"
-              className="flex-grow bg-navy-700 border border-navy-600 rounded-l-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-neon-green"
-              onKeyPress={(e) => e.key === 'Enter' && addKeyword()}
-            />
-            <button
-              onClick={addKeyword}
-              className="bg-neon-green text-navy-900 font-medium py-2 px-4 rounded-r-md hover:bg-opacity-90 focus:outline-none"
-            >
-              Add
-            </button>
-          </div>
-          <p className="mt-1 text-sm text-gray-400">Add specific keywords to refine your news</p>
-          
-          {preferences.keywords.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {preferences.keywords.map(keyword => (
-                <span key={keyword} className="bg-navy-600 text-white px-3 py-1 rounded-full flex items-center">
-                  {keyword}
-                  <button
-                    onClick={() => removeKeyword(keyword)}
-                    className="ml-2 text-gray-400 hover:text-white focus:outline-none"
-                  >
-                    &times;
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        
-        {/* Preferred Sources */}
-        <div>
-          <label className="block text-gray-300 mb-2 font-medium">Preferred News Sources</label>
-          <div className="flex">
-            <input
-              type="text"
-              value={newSource}
-              onChange={(e) => setNewSource(e.target.value)}
-              placeholder="Add a news source"
-              className="flex-grow bg-navy-700 border border-navy-600 rounded-l-md py-2 px-3 text-white focus:outline-none focus:ring-2 focus:ring-neon-green"
-              onKeyPress={(e) => e.key === 'Enter' && addSource()}
-            />
-            <button
-              onClick={addSource}
-              className="bg-neon-green text-navy-900 font-medium py-2 px-4 rounded-r-md hover:bg-opacity-90 focus:outline-none"
-            >
-              Add
-            </button>
-          </div>
-          <p className="mt-1 text-sm text-gray-400">Add your trusted news sources (e.g., BBC, CNN, Reuters)</p>
-          
-          {preferences.preferred_sources.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {preferences.preferred_sources.map(source => (
-                <span key={source} className="bg-navy-600 text-white px-3 py-1 rounded-full flex items-center">
-                  {source}
-                  <button
-                    onClick={() => removeSource(source)}
-                    className="ml-2 text-gray-400 hover:text-white focus:outline-none"
-                  >
-                    &times;
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-        
-        {/* Save Button */}
-        <div className="pt-4">
+      {/* Keywords */}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-white mb-3">Keywords</h3>
+        <p className="text-gray-300 mb-3">Add keywords to customize your news feed:</p>
+        <div className="flex mb-2">
+          <input
+            type="text"
+            value={newKeyword}
+            onChange={(e) => setNewKeyword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addKeyword())}
+            placeholder="Enter a keyword"
+            className="flex-grow p-2 bg-navy-700 border border-navy-600 rounded-l text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
           <button
-            onClick={savePreferences}
-            disabled={isSaving}
-            className="w-full bg-neon-green text-navy-900 font-medium py-3 px-4 rounded-md hover:bg-opacity-90 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+            type="button"
+            onClick={addKeyword}
+            disabled={!newKeyword.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-r hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSaving ? 'Saving...' : 'Save Preferences'}
+            Add
           </button>
         </div>
+        <div className="flex flex-wrap gap-2 mt-2">
+          {preferences.keywords.map(keyword => (
+            <div key={keyword} className="bg-navy-700 text-gray-200 px-3 py-1 rounded-full flex items-center">
+              <span>{keyword}</span>
+              <button
+                type="button"
+                onClick={() => removeKeyword(keyword)}
+                className="ml-2 text-gray-400 hover:text-white"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          ))}
+          {preferences.keywords.length === 0 && (
+            <p className="text-gray-400 text-sm">No keywords added yet</p>
+          )}
+        </div>
+      </div>
+      
+      {/* News Sources */}
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-white mb-3">Preferred News Sources</h3>
+        <p className="text-gray-300 mb-3">Select your preferred news sources:</p>
+        <div className="flex flex-wrap gap-2">
+          {SOURCE_OPTIONS.map(source => (
+            <button
+              key={source}
+              type="button"
+              onClick={() => handleSourceToggle(source)}
+              className={`px-3 py-1 rounded text-sm ${
+                preferences.preferred_sources.includes(source)
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-navy-700 text-gray-300 hover:bg-navy-600'
+              }`}
+            >
+              {source}
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3 mt-6">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 bg-navy-700 text-gray-300 rounded hover:bg-navy-600"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          {isSaving ? 'Saving...' : 'Save Preferences'}
+        </button>
       </div>
     </div>
   );

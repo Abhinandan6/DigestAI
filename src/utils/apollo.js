@@ -4,7 +4,8 @@ import nhost from './nhost';
 
 // Create an HTTP link with the correct Hasura endpoint
 const httpLink = createHttpLink({
-  uri: 'https://pmdddjhfyuqnpddamxhh.hasura.ap-south-1.nhost.run/v1/graphql'
+  uri: import.meta.env.VITE_HASURA_GRAPHQL_URL
+  // uri: 'https://pmdddjhfyuqnpddamxhh.hasura.ap-south-1.nhost.run/v1/graphql'
 });
 
 // Add authentication to your requests

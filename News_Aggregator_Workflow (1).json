@@ -1,0 +1,873 @@
+{
+  "name": "News Aggregator Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"meta-llama/llama-3-8b-instruct:free\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an assistant that summarizes news articles, determines their sentiment (positive, neutral, negative), and provides a brief explanation for the sentiment classification. Return your response as a JSON object with summary, sentiment, and explanation keys.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Please summarize the following news article in 3-4 sentences, classify its sentiment as positive, neutral, or negative, and provide a brief explanation for the classification.\\n\\nTitle: {{ $json.articleTitle }}\\n\\nContent: {{ $json.articleContent }}\"\n    }\n  ],\n  \"response_format\": { \"type\": \"json_object\" }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -920,
+        -1020
+      ],
+      "id": "91685625-3010-4fb2-80e0-8eaae5e28389",
+      "name": "Process with AI"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  // Parse the AI response\n  const aiResponseContent = $json.choices[0].message.content;\n  const aiResponse = JSON.parse(aiResponseContent);\n\n  // Combine article data with AI analysis\n  return {\n    json: {\n      // Article details\n      title: $json.articleTitle,\n      content: $json.articleContent,\n      source: $json.source,\n      url: $json.url,\n      published_at: $json.publishedAt,\n\n      // AI analysis\n      summary: aiResponse.summary,\n      sentiment: aiResponse.sentiment.toLowerCase(), // Ensure consistent format\n      explanation: aiResponse.explanation,\n\n      // User data\n      user_id: $json.userId,\n      topic: $json.topic\n    }\n  };\n} catch (error) {\n  // Handle errors in parsing\n  console.log('Error parsing AI response:', error);\n  return {\n    json: {\n      error: 'Failed to parse AI response',\n      original_response: $json.choices[0].message.content\n    }\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -680,
+        -1020
+      ],
+      "id": "f9dc0560-426f-4ef8-842e-c95f1b4ed4c3",
+      "name": "Parse AI Response"
+    },
+    {
+      "parameters": {
+        "url": "https://newsapi.org/v2/everything",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "{{ $json.topic }}"
+            },
+            {
+              "name": "apiKey",
+              "value": "df7e9347dc71415b82160affe705c62a"
+            },
+            {
+              "name": "language",
+              "value": "\"en\""
+            },
+            {
+              "name": "pageSize",
+              "value": "\"10\""
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "df7e9347dc71415b82160affe705c62a"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -900,
+        -1580
+      ],
+      "id": "05772d4f-5b2b-4ebf-8b28-6d488fd022f7",
+      "name": "Fetch News By Preference"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pmdddjhfyuqnpddamxhh.hasura.ap-south-1.nhost.run/v1/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-hasura-admin-secret",
+              "value": "bdeWYZ_Vwtf(9Hv*HL@akNHZ:VoL-,&P"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation ($title: String!, $content: String!, $source: String!, $published_at: timestamptz, $url: String!, $summary: String!, $sentiment: String!, $explanation: String, $topics: [text], $user_id: uuid!) { insert_articles_one(object: { title: $title, content: $content, source: $source, published_at: $published_at, url: $url, topics: $topics, processed_articles: { data: { summary: $summary, sentiment: $sentiment, explanation: $explanation } }, user_articles: { data: { user_id: $user_id, is_read: false, is_saved: false } } }) { id } }\",\n  \"variables\": {\n    \"title\": \"{{ $json.title }}\",\n    \"content\": \"{{ $json.content }}\",\n    \"source\": \"{{ $json.source }}\",\n    \"published_at\": \"{{ $json.published_at }}\",\n    \"url\": \"{{ $json.url }}\",\n    \"summary\": \"{{ $json.summary }}\",\n    \"sentiment\": \"{{ $json.sentiment }}\",\n    \"explanation\": \"{{ $json.explanation }}\",\n    \"topics\": [\"{{ $json.topic }}\"],\n    \"user_id\": \"{{ $json.user_id }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -920,
+        -720
+      ],
+      "id": "5ca6e76f-4b6e-4f21-8c4f-da8269e7e7f3",
+      "name": "Save to Nhost DB"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "news-flow",
+        "responseMode": "lastNode",
+        "responseData": "firstEntryBinary",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        -2400
+      ],
+      "id": "b1bf786f-995e-438f-8bc5-ac179aa362ee",
+      "name": "Webhook",
+      "webhookId": "146a0fc9-1717-42bf-8352-22782fd2bc59"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{$json.action}}",
+                    "rightValue": "fetch",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "e37889f5-abd8-4a55-94ba-8f1bda508ca3"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "85b34a1a-981c-4bd0-978b-518daa9715e9",
+                    "leftValue": "={{$json.action}}",
+                    "rightValue": "refresh",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        280,
+        -1900
+      ],
+      "id": "4093bde8-cd63-4a0c-963e-3eb08dfd3da6",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse incoming webhook data\nconst data = $json;\nconst userId = data.userId || null;\nconst action = data.action || 'fetch';\nconst preferences = data.preferences || {};\n\n// If no userId is provided, we can't proceed\nif (!userId) {\n  return {\n    json: {\n      success: false,\n      message: 'User ID is required'\n    }\n  };\n}\n\nreturn {\n  json: {\n    user_id: userId,\n    action: action,\n    topic: preferences.topic || 'general',\n    keywords: Array.isArray(preferences.keywords) ? preferences.keywords : [],\n    preferred_sources: Array.isArray(preferences.preferred_sources) ? preferences.preferred_sources : []\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -120,
+        -2160
+      ],
+      "id": "9b04c8b0-211e-40af-9b8e-1c2a337288a7",
+      "name": "Parse Ewnhook Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process user preferences result\nconst userId = $json.user_id || $node[\"Parse Webhook Data\"].json.user_id;\nconst data = $json.data || {};\nconst userPreferences = data.user_preferences || [];\n\n// If user has preferences, use them\nif (userPreferences.length > 0) {\n  return {\n    json: {\n      user_id: userId,\n      has_preferences: true,\n      topic: userPreferences[0].topic || 'general',\n      keywords: userPreferences[0].keywords || [],\n      preferred_sources: userPreferences[0].preferred_sources || []\n    }\n  };\n} \n// Otherwise, use general news\nelse {\n  return {\n    json: {\n      user_id: userId,\n      has_preferences: false,\n      topic: 'general',\n      keywords: [],\n      preferred_sources: []\n    }\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        -1780
+      ],
+      "id": "6583e141-c5b7-41af-ac3e-33c14f5ccf83",
+      "name": "Process Preferences"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process multiple articles\nconst articles = $json.articles || [];\nconst userId = $node[\"Process Preferences\"].json.user_id;\nconst topic = $node[\"Process Preferences\"].json.topic;\n\n// If no articles, return empty\nif (articles.length === 0) {\n  return {\n    json: {\n      success: false,\n      message: 'No articles found'\n    }\n  };\n}\n\n// Process up to 5 articles\nconst processedArticles = articles.slice(0, 5).map(article => {\n  return {\n    title: article.title,\n    content: article.content || article.description,\n    url: article.url,\n    source: article.source.name,\n    publishedAt: article.publishedAt,\n    userId: userId,\n    topic: topic\n  };\n});\n\nreturn {\n  json: {\n    articles: processedArticles,\n    user_id: userId,\n    topic: topic\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        -1580
+      ],
+      "id": "049de90c-e972-455e-8a9a-e927505223da",
+      "name": "Process Articles",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -900,
+        -1300
+      ],
+      "id": "55ccabc4-0697-41d7-bdda-2ac99957e0cb",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "Replace Me",
+      "typeVersion": 1,
+      "position": [
+        -660,
+        -1260
+      ],
+      "id": "1b9d5dce-d1f6-4df0-ad06-5dc92c0d913a"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare article for AI processing\nconst article = $json;\n\nreturn {\n  json: {\n    articleTitle: article.title,\n    articleContent: article.content,\n    userId: article.userId,\n    topic: article.topic,\n    url: article.url,\n    source: article.source,\n    publishedAt: article.publishedAt\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1140,
+        -1020
+      ],
+      "id": "30df8946-549d-4ca8-b6fa-025c084afe9f",
+      "name": "Prepare for AI"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        -260,
+        -820
+      ],
+      "id": "8db06d5f-89e4-4870-b9a1-936c0fb8a51a",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format final response\nconst items = $json;\nconst articles = Array.isArray(items) ? items : [items];\n\nconst formattedArticles = articles\n  .filter(item => item && item.data && item.data.insert_articles_one)\n  .map(item => {\n    return {\n      id: item.data.insert_articles_one.id,\n      title: item.title || \"No title\",\n      summary: item.summary || \"No summary available\",\n      sentiment: item.sentiment || \"neutral\",\n      url: item.url || \"\",\n      source: item.source || \"Unknown source\",\n      publishedAt: item.published_at || new Date().toISOString()\n    };\n  });\n\nreturn {\n  json: {\n    success: true,\n    articles: formattedArticles,\n    count: formattedArticles.length\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        -660
+      ],
+      "id": "5b1c7b55-fefe-4826-9206-69de963c1ea7",
+      "name": "Format Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process articles for refresh\nconst articles = $json.articles || [];\n\n// If no articles, return empty\nif (articles.length === 0) {\n  return {\n    json: {\n      success: false,\n      message: 'No articles found'\n    }\n  };\n}\n\n// Process up to 5 articles\nconst processedArticles = articles.slice(0, 5).map(article => {\n  return {\n    title: article.title,\n    content: article.content || article.description,\n    url: article.url,\n    source: article.source.name,\n    publishedAt: article.publishedAt,\n    topic: 'general'\n  };\n});\n\nreturn {\n  json: {\n    articles: processedArticles\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        -1660
+      ],
+      "id": "6a4ed2e0-5323-425d-9c67-3d333e23f384",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "url": "https://newsapi.org/v2/top-headlines",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "country",
+              "value": "in"
+            },
+            {
+              "name": "apiKey",
+              "value": "df7e9347dc71415b82160affe705c62a"
+            },
+            {
+              "name": "pageSize",
+              "value": "5"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        -1660
+      ],
+      "id": "dd5d0847-2091-4b72-af74-69cb4f42b1f0",
+      "name": "Refresh"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pmdddjhfyuqnpddamxhh.hasura.ap-south-1.nhost.run/v1/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-hasura-admin-secret",
+              "value": "bdeWYZ_Vwtf(9Hv*HL@akNHZ:VoL-,&P"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": \"query GetUserPreferences($userId: uuid!) { user_preferences(where: {user_id: {_eq: $userId}}) { id topic keywords preferred_sources } }\",\n  \"variables\": {\n    \"userId\": \"{{$json.user_id}}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -900,
+        -1780
+      ],
+      "id": "ce767390-305f-4535-bcbd-535cc067b4d5",
+      "name": "Fetch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process multiple articles\nconst articles = $json.articles || [];\nconst userId = $node[\"Process Preferences\"].json.user_id;\nconst topic = $node[\"Process Preferences\"].json.topic;\n\n// If no articles, return empty\nif (articles.length === 0) {\n  return {\n    json: {\n      success: false,\n      message: 'No articles found'\n    }\n  };\n}\n\n// Process up to 5 articles\nconst processedArticles = articles.slice(0, 5).map(article => {\n  return {\n    title: article.title,\n    content: article.content || article.description,\n    url: article.url,\n    source: article.source.name,\n    publishedAt: article.publishedAt,\n    userId: userId,\n    topic: topic\n  };\n});\n\nreturn {\n  json: {\n    articles: processedArticles,\n    user_id: userId,\n    topic: topic\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        -1660
+      ],
+      "id": "80fe42b8-99b9-4b3c-8135-c4d6851fc14c",
+      "name": "Process Articles1",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1160,
+        -1360
+      ],
+      "id": "67e84f4b-1c8b-4800-8588-cb2a5a9ee3a5",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "name": "Replace Me1",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        -1340
+      ],
+      "id": "c8951a74-0556-4106-acee-dc20b265202e"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"meta-llama/llama-3-8b-instruct:free\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an assistant that summarizes news articles, determines their sentiment (positive, neutral, negative), and provides a brief explanation for the sentiment classification. Return your response as a JSON object with summary, sentiment, and explanation keys.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Please summarize the following news article in 3-4 sentences, classify its sentiment as positive, neutral, or negative, and provide a brief explanation for the classification.\\n\\nTitle: {{ $json.articleTitle }}\\n\\nContent: {{ $json.articleContent }}\"\n    }\n  ],\n  \"response_format\": { \"type\": \"json_object\" }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        -1040
+      ],
+      "id": "bde1216f-12c3-4bb8-86c1-43671ba87282",
+      "name": "Process with AI1"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  // Parse the AI response\n  const aiResponseContent = $json.choices[0].message.content;\n  const aiResponse = JSON.parse(aiResponseContent);\n\n  // Combine article data with AI analysis\n  return {\n    json: {\n      // Article details\n      title: $json.articleTitle,\n      content: $json.articleContent,\n      source: $json.source,\n      url: $json.url,\n      published_at: $json.publishedAt,\n\n      // AI analysis\n      summary: aiResponse.summary,\n      sentiment: aiResponse.sentiment.toLowerCase(), // Ensure consistent format\n      explanation: aiResponse.explanation,\n\n      // User data\n      user_id: $json.userId,\n      topic: $json.topic\n    }\n  };\n} catch (error) {\n  // Handle errors in parsing\n  console.log('Error parsing AI response:', error);\n  return {\n    json: {\n      error: 'Failed to parse AI response',\n      original_response: $json.choices[0].message.content\n    }\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        -1040
+      ],
+      "id": "ec5e6486-bdcb-473d-97e1-41b1f620a55b",
+      "name": "Parse AI Response1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pmdddjhfyuqnpddamxhh.hasura.ap-south-1.nhost.run/v1/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-hasura-admin-secret",
+              "value": "bdeWYZ_Vwtf(9Hv*HL@akNHZ:VoL-,&P"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"query\": \"mutation ($title: String!, $content: String!, $source: String!, $published_at: timestamptz, $url: String!, $summary: String!, $sentiment: String!, $explanation: String, $topics: [text], $user_id: uuid!) { insert_articles_one(object: { title: $title, content: $content, source: $source, published_at: $published_at, url: $url, topics: $topics, processed_articles: { data: { summary: $summary, sentiment: $sentiment, explanation: $explanation } }, user_articles: { data: { user_id: $user_id, is_read: false, is_saved: false } } }) { id } }\",\n  \"variables\": {\n    \"title\": \"{{ $json.title }}\",\n    \"content\": \"{{ $json.content }}\",\n    \"source\": \"{{ $json.source }}\",\n    \"published_at\": \"{{ $json.published_at }}\",\n    \"url\": \"{{ $json.url }}\",\n    \"summary\": \"{{ $json.summary }}\",\n    \"sentiment\": \"{{ $json.sentiment }}\",\n    \"explanation\": \"{{ $json.explanation }}\",\n    \"topics\": [\"{{ $json.topic }}\"],\n    \"user_id\": \"{{ $json.user_id }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1740,
+        -1040
+      ],
+      "id": "eb429e1e-fdf1-4674-bad4-dee28f1f7601",
+      "name": "Save to Nhost DB1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare article for AI processing\nconst article = $json;\n\nreturn {\n  json: {\n    articleTitle: article.title,\n    articleContent: article.content,\n    userId: article.userId,\n    topic: article.topic,\n    url: article.url,\n    source: article.source,\n    publishedAt: article.publishedAt\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        840,
+        -1040
+      ],
+      "id": "823fce0c-6667-45ac-b549-92559ee2b094",
+      "name": "Prepare for AI1"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{{$json}} ",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        780,
+        -660
+      ],
+      "id": "9153b366-09cb-44f4-8f89-949b037ccca3",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "refresh-news",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        920,
+        -2340
+      ],
+      "id": "368240d8-ecff-470e-a8e1-59ed90717db5",
+      "name": "Webhook1",
+      "webhookId": "0df5c013-1434-47f8-83e3-c61ff351a99f"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse incoming refresh webhook data\nconst data = $json;\nconst action = data.action || 'refresh';\nconst timestamp = data.timestamp || new Date().toISOString();\n\n// Validate that this is a refresh request\nif (action !== 'refresh') {\n  return {\n    json: {\n      success: false,\n      message: 'Invalid action. Expected \"refresh\"'\n    }\n  };\n}\n\n// Return formatted data for the refresh flow\nreturn {\n  json: {\n    action: 'refresh',\n    timestamp: timestamp,\n    topic: 'general',  // Default topic for refresh requests\n    user_id: 'system',  // Use system as the user ID for refresh requests\n    keywords: [],\n    preferred_sources: []\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        920,
+        -2120
+      ],
+      "id": "3509c880-0dc2-45b7-b56a-223d088f1784",
+      "name": "Code1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Process with AI": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Save to Nhost DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch News By Preference": {
+      "main": [
+        [
+          {
+            "node": "Process Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Nhost DB": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Ewnhook Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Ewnhook Data": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Fetch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Refresh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Preferences": {
+      "main": [
+        [
+          {
+            "node": "Fetch News By Preference",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Articles": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Prepare for AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Replace Me",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replace Me": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for AI": {
+      "main": [
+        [
+          {
+            "node": "Process with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Refresh": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch": {
+      "main": [
+        [
+          {
+            "node": "Process Preferences",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Process Articles1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Articles1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "Prepare for AI1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Replace Me1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Replace Me1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process with AI1": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response1": {
+      "main": [
+        [
+          {
+            "node": "Save to Nhost DB1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare for AI1": {
+      "main": [
+        [
+          {
+            "node": "Process with AI1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Nhost DB1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Webhook1": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Refresh",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "4c13e7b0-fb09-4c02-8433-6b5a8c28af8b",
+  "meta": {
+    "instanceId": "5229ad676c3a8d293c6db345f673ae85f2faeec97332d940e6b8ecea4c050d50"
+  },
+  "id": "DtIaPVohlfY06TR2",
+  "tags": []
+}

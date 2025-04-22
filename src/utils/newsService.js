@@ -55,10 +55,25 @@ class NewsService {
         }
       });
       
-      return data.fetchNews.articles;
+      // Return the proper structure that Dashboard.jsx expects
+      if (data.fetchNews && data.fetchNews.success) {
+        return {
+          success: true,
+          articles: data.fetchNews.articles || []
+        };
+      } else {
+        return {
+          success: false,
+          articles: []
+        };
+      }
     } catch (error) {
       console.error('Error fetching news:', error);
-      return [];
+      return {
+        success: false,
+        articles: [],
+        error: error.message
+      };
     }
   }
 
